@@ -5,15 +5,16 @@
 
     <!-- Product and plugin compatibility requirements -->
     <!-- https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
-    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.platform </depends>
+    <depends>org.jetbrains.kotlin</depends>
+    <depends>com.intellij.java</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <applicationService serviceImplementation="com.github.slampy97.plugintemplate.services.MyApplicationService"/>
-        <projectService serviceImplementation="com.github.slampy97.plugintemplate.services.MyProjectService"/>
+       <fileEditorProvider implementation="org.jetbrains.plugins.template.ui.editor.MyKotlinFileEditorProvider"/>
     </extensions>
-
-    <applicationListeners>
-        <listener class="com.github.slampy97.plugintemplate.listeners.MyProjectManagerListener"
-                  topic="com.intellij.openapi.project.ProjectManagerListener"/>
-    </applicationListeners>
+    <actions>
+        <group id="MyAwesomeToolbarGroup">
+            <action class="org.jetbrains.plugins.template.ui.editor.MyAwesomeAction" text="myAction"/>
+        </group>
+    </actions>
 </idea-plugin>
