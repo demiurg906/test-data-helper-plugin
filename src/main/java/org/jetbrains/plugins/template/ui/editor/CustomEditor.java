@@ -4,31 +4,56 @@ package org.jetbrains.plugins.template.ui.editor;
 
 
 import com.intellij.codeHighlighting.BackgroundEditorHighlighter;
+import com.intellij.execution.Executor;
+import com.intellij.execution.application.JvmApplicationRunLineMarkerContributor;
+import com.intellij.execution.dashboard.actions.RunAction;
+import com.intellij.execution.executors.DefaultRunExecutor;
+import com.intellij.execution.lineMarker.ExecutorAction;
+import com.intellij.execution.lineMarker.RunLineMarkerContributor;
 import com.intellij.icons.AllIcons;
+import com.intellij.ide.actions.runAnything.RunAnythingAction;
 import com.intellij.ide.structureView.StructureViewBuilder;
+import com.intellij.ide.ui.laf.darcula.DarculaUIUtil;
 import com.intellij.ide.util.PropertiesComponent;
+import com.intellij.lang.jvm.types.JvmReferenceType;
 import com.intellij.openapi.actionSystem.*;
+import com.intellij.openapi.actionSystem.ex.ComboBoxAction;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.fileEditor.*;
+import com.intellij.openapi.module.ModuleUtil;
 import com.intellij.openapi.project.DumbAware;
+import com.intellij.openapi.project.DumbService;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.util.Disposer;
-import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.UserDataHolderBase;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.IdeFocusManager;
 import com.intellij.pom.Navigatable;
+import com.intellij.psi.*;
+import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.search.PsiShortNamesCache;
+import com.intellij.testIntegration.TestRunLineMarkerProvider;
 import com.intellij.ui.JBSplitter;
+import com.intellij.ui.components.JBLabel;
+import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.ui.JBUI;
+import org.gradle.launcher.cli.RunBuildAction;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.kotlin.idea.refactoring.DataContextUtilsKt;
+
 
 import javax.swing.*;
+import java.awt.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static com.intellij.openapi.actionSystem.ActionPlaces.TEXT_EDITOR_WITH_PREVIEW;
 
@@ -44,7 +69,6 @@ public class CustomEditor extends UserDataHolderBase implements TextEditor {
     private SplitEditorToolbar myToolbarWrapper;
     private final String myName;
     private int currentPreview;
-    public static final Key<Layout> DEFAULT_LAYOUT_FOR_FILE = Key.create("TextEditorWithPreview.DefaultLayout");
     private JBSplitter splitter = null;
 
     public CustomEditor(@NotNull TextEditor editor,
@@ -52,7 +76,7 @@ public class CustomEditor extends UserDataHolderBase implements TextEditor {
                                  @NotNull String editorName,
                                  @NotNull Layout defaultLayout,
                                 int curPreview
-                        ) {
+    ) {
         myEditor = editor;
         myPreview = preview;
         myName = editorName;
@@ -71,6 +95,12 @@ public class CustomEditor extends UserDataHolderBase implements TextEditor {
                         @NotNull List<FileEditor> preview,
                         int curPreview) {
         this(editor, preview, "TextEditorWithPreview", curPreview);
+    }
+
+    @Nullable
+    public void changeEditor(FileEditor item) {
+        currentPreview = myPreview.indexOf(item);
+        splitter.setSecondComponent(myPreview.get(currentPreview).getComponent());
     }
 
     @Nullable
@@ -133,6 +163,64 @@ public class CustomEditor extends UserDataHolderBase implements TextEditor {
             myComponent = JBUI.Panels.simplePanel(splitter).addToTop(myToolbarWrapper);
         }
         return myComponent;
+    }
+
+    private @NotNull List<PsiMethod> collectMethods(@NotNull String baseName, @NotNull String path, @NotNull String truePath) {
+        System.out.println(baseName + " | " + path + " | " + truePath);
+        final Project project = getEditor().getProject();
+        final PsiShortNamesCache cache = PsiShortNamesCache.getInstance(project);
+        final String targetMethodName = "test" + Character.toUpperCase(baseName.charAt(0)) + baseName.substring(1);
+        System.out.println( "method searching name : " + targetMethodName);
+        final PsiMethod[] psiMethods = cache.getMethodsByName(targetMethodName, GlobalSearchScope.allScope(project));
+        List<PsiMethod> methods = Arrays
+                .stream(psiMethods)
+                .filter(method -> method.hasAnnotation("org.jetbrains.kotlin.test.TestMetadata"))
+                .collect(Collectors.toList());
+        System.out.println( "find methods: " + methods.size());
+
+        List<PsiMethod> findingMethods = new ArrayList<>();
+        for (PsiMethod method: methods) {
+            final String classPath = method.getContainingClass()
+                    .getAnnotation("org.jetbrains.kotlin.test.TestMetadata")
+                    .getParameterList()
+                    .getAttributes()[0]
+                    .getLiteralValue();
+            final String methodPathPart = method
+                    .getAnnotation("org.jetbrains.kotlin.test.TestMetadata")
+                    .getParameterList()
+                    .getAttributes()[0]
+                    .getLiteralValue();
+           // D:\programming\summer_nir\kotlin\kotlin\compiler\testData\diagnostics\nativeTests\sharedImmutable.kt
+            final String methodPath = path + '/' + classPath + '/' + methodPathPart;
+            System.out.println( methodPath + " | " + truePath);
+            if (methodPath.equals(truePath)) {
+                findingMethods.add(method);
+            }
+        }
+        return findingMethods;
+    }
+
+    private @NotNull List<String> collectTestMethods(@NotNull String baseName) {
+        //System.out.println("Searching for file: " + baseName);
+        final Project project = getEditor().getProject();
+        final PsiShortNamesCache cache = PsiShortNamesCache.getInstance(project);
+        final String targetName = baseName + "Generated";
+        final String targetMethodName = "test" + Character.toUpperCase(baseName.charAt(0)) + baseName.substring(1);
+        System.out.println(targetMethodName);
+      //  System.out.println("Target file name: " + targetName);
+        final PsiClass[] classes = cache.getClassesByName(targetName, GlobalSearchScope.allScope(project));
+        final PsiMethod[] psiMethods = cache.getMethodsByName(targetName, GlobalSearchScope.allScope(project));
+        System.out.println("Size: " + classes.length);
+        for (PsiClass cls: classes) {
+            //System.out.println(cls);
+            final List<PsiMethod> methods = Arrays.stream(cls.getAllMethods())
+                    .filter(method -> StringUtil.startsWith(method.getName(), "test"))
+                    .collect(Collectors.toList());
+            for (PsiMethod method: methods) {
+             //   System.out.println(method.getName());
+            }
+        }
+        return Collections.emptyList();
     }
 
     @NotNull
@@ -343,51 +431,106 @@ public class CustomEditor extends UserDataHolderBase implements TextEditor {
         }
     }
 
+    private ActionGroup createBuildActionGroup() {
+//        DumbService.getInstance(myEditor.getEditor().getProject()).runWhenSmart(() -> {
+            final String name = myEditor.getFile().getNameWithoutExtension();
+            final String truePath = myEditor.getFile().getPath();
+            final String path = myEditor.getEditor().getProject().getBasePath();
+            List<PsiMethod> testMethods = collectMethods(name, path, truePath);
+            System.out.println("testMethods were: " + testMethods.size());
+            TestRunLineMarkerProvider ex = new TestRunLineMarkerProvider();
+            for (PsiMethod testMethod : testMethods) {
+                System.out.println("Processing " + testMethod.getName());
+                PsiElement first = Arrays
+                        .stream(testMethod.getChildren())
+                        .filter(p -> p instanceof PsiIdentifier)
+                        .findFirst()
+                        .orElse(null);
+                if (first == null) {
+                    continue;
+                }
+                RunLineMarkerContributor.Info info = ex.getInfo(first);
+                if (info == null) {
+                    continue;
+                }
+                AnAction[] allActions = info.actions;
+                if (allActions.length == 0) {
+                    continue;
+                }
+
+                final DefaultActionGroup group = new DefaultActionGroup(Arrays.stream(allActions).map(it -> new AnAction() {
+                    @Override
+                    public void actionPerformed(@NotNull AnActionEvent e) {
+
+                    }
+
+                    @Override
+                    public void update(@NotNull AnActionEvent e) {
+                        it.update(e);
+                        e.getPresentation().setEnabledAndVisible(true);
+                    }
+                }).collect(Collectors.toList()));
+                group.setPopup(true);
+                return group;
+//                ((DefaultActionGroup) actionGroup).add(new DefaultActionGroup(allActions));
+//                break;
+            }
+            if (myComponent != null) {
+                myComponent.revalidate();
+                myComponent.repaint();
+            }
+//        });
+        throw new IllegalStateException();
+    }
+
     @Nullable
     protected ActionToolbar createToolbar() {
-        ActionGroup actionGroup = createPreviewActionGroup();
-        if (actionGroup != null) {
-            return ActionManager.getInstance().createActionToolbar(TEXT_EDITOR_WITH_PREVIEW, actionGroup, true);
-        }
-        else {
-            return null;
-        }
-    }
-
-    @NotNull
-    protected AnAction getShowFstPreview() {
-        return new AnAction() {
-            @Override
-            public void actionPerformed(@NotNull AnActionEvent e) {
-                currentPreview = 0;
-                splitter.setSecondComponent(myPreview.get(currentPreview).getComponent());
-                System.out.println("fst");
-            }
-        };
-    }
-
-    @NotNull
-    protected AnAction getShowSndPreview() {
-        return new AnAction() {
-            @Override
-            public void actionPerformed(@NotNull AnActionEvent e) {
-                currentPreview = 1;
-                splitter.setSecondComponent(myPreview.get(currentPreview).getComponent());
-                System.out.println("fst");
-            }
-        };
+//        actionGroup = createPreviewActionGroup();
+        final ActionGroup actionGroup = createBuildActionGroup();
+        ActionToolbar actionToolbar = ActionManager.getInstance().createActionToolbar(TEXT_EDITOR_WITH_PREVIEW, actionGroup, true);
+        return actionToolbar;
     }
 
     @NotNull
     protected ActionGroup createPreviewActionGroup() {
-        return new DefaultActionGroup(
-                getShowFstPreview(),
-                getShowSndPreview()
-        );
+        return new DefaultActionGroup(new MyComboboxAction());
     }
-    @Nullable
-    protected ActionGroup createLeftToolbarActionGroup() {
-        return null;
+
+    private class MyComboboxAction extends ComboBoxAction {
+
+        @Override
+        protected @NotNull DefaultActionGroup createPopupActionGroup(JComponent button) {
+            return new DefaultActionGroup();
+        }
+
+        @NotNull
+        @Override
+        public JComponent createCustomComponent(@NotNull Presentation presentation, @NotNull String place) {
+            final ComboBox box = new ComboBox(new DefaultComboBoxModel(myPreview.toArray()));
+            box.addActionListener((event) -> {
+                changeEditor((FileEditor) box.getItem());
+            });
+            box.setRenderer(new DefaultListCellRenderer() {
+                @Override
+                public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                    final Component originalComponent = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                    if (value instanceof FileEditor) {
+                        setText(Objects.requireNonNull((FileEditor) value).getFile().getName());
+                    } else {
+                        setText("#########");
+                    }
+                    return originalComponent;
+                }
+            });
+            box.putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true);
+            final JPanel panel = new JPanel();
+            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+            final JBLabel label = new JBLabel("Test file: ");
+//            label.setFont(JBUI.Fonts.smallFont());
+            panel.add(label);
+            panel.add(box);
+            return panel;
+        }
     }
 
     @NotNull
