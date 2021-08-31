@@ -3,26 +3,37 @@
 package org.jetbrains.plugins.template.ui.editor;
 
 
+import static com.intellij.openapi.actionSystem.ActionPlaces.TEXT_EDITOR_WITH_PREVIEW;
+
 import com.intellij.codeHighlighting.BackgroundEditorHighlighter;
-import com.intellij.execution.Executor;
-import com.intellij.execution.application.JvmApplicationRunLineMarkerContributor;
-import com.intellij.execution.dashboard.actions.RunAction;
-import com.intellij.execution.executors.DefaultRunExecutor;
-import com.intellij.execution.lineMarker.ExecutorAction;
+import com.intellij.execution.Location;
+import com.intellij.execution.PsiLocation;
+import com.intellij.execution.actions.ConfigurationContext;
 import com.intellij.execution.lineMarker.RunLineMarkerContributor;
 import com.intellij.icons.AllIcons;
-import com.intellij.ide.actions.runAnything.RunAnythingAction;
 import com.intellij.ide.structureView.StructureViewBuilder;
 import com.intellij.ide.ui.laf.darcula.DarculaUIUtil;
 import com.intellij.ide.util.PropertiesComponent;
-import com.intellij.lang.jvm.types.JvmReferenceType;
-import com.intellij.openapi.actionSystem.*;
+import com.intellij.openapi.actionSystem.ActionGroup;
+import com.intellij.openapi.actionSystem.ActionManager;
+import com.intellij.openapi.actionSystem.ActionToolbar;
+import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.DataContext;
+import com.intellij.openapi.actionSystem.DefaultActionGroup;
+import com.intellij.openapi.actionSystem.Presentation;
+import com.intellij.openapi.actionSystem.Separator;
+import com.intellij.openapi.actionSystem.ToggleAction;
 import com.intellij.openapi.actionSystem.ex.ComboBoxAction;
+import com.intellij.openapi.actionSystem.impl.SimpleDataContext;
 import com.intellij.openapi.editor.Editor;
-import com.intellij.openapi.fileEditor.*;
-import com.intellij.openapi.module.ModuleUtil;
+import com.intellij.openapi.fileEditor.FileEditor;
+import com.intellij.openapi.fileEditor.FileEditorLocation;
+import com.intellij.openapi.fileEditor.FileEditorState;
+import com.intellij.openapi.fileEditor.FileEditorStateLevel;
+import com.intellij.openapi.fileEditor.SplitEditorToolbar;
+import com.intellij.openapi.fileEditor.TextEditor;
 import com.intellij.openapi.project.DumbAware;
-import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.util.Disposer;
@@ -32,30 +43,36 @@ import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.IdeFocusManager;
 import com.intellij.pom.Navigatable;
-import com.intellij.psi.*;
+import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiIdentifier;
+import com.intellij.psi.PsiMethod;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.PsiShortNamesCache;
 import com.intellij.testIntegration.TestRunLineMarkerProvider;
 import com.intellij.ui.JBSplitter;
 import com.intellij.ui.components.JBLabel;
-import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.ui.JBUI;
-import org.gradle.launcher.cli.RunBuildAction;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.jetbrains.kotlin.idea.refactoring.DataContextUtilsKt;
-
-
-import javax.swing.*;
-import java.awt.*;
+import java.awt.Component;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
-
-import static com.intellij.openapi.actionSystem.ActionPlaces.TEXT_EDITOR_WITH_PREVIEW;
+import javax.swing.BoxLayout;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.Icon;
+import javax.swing.JComponent;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 
 public class CustomEditor extends UserDataHolderBase implements TextEditor {
@@ -70,6 +87,10 @@ public class CustomEditor extends UserDataHolderBase implements TextEditor {
     private final String myName;
     private int currentPreview;
     private JBSplitter splitter = null;
+    private List<List<AnAction>> debugAndRun = new ArrayList<>();
+    private int currentChosenGroup = 0;
+    private DefaultActionGroup currentGroup = new DefaultActionGroup();
+    private List<String> methodsClassNames = new ArrayList<>();
 
     public CustomEditor(@NotNull TextEditor editor,
                                  @NotNull List<FileEditor> preview,
@@ -100,7 +121,16 @@ public class CustomEditor extends UserDataHolderBase implements TextEditor {
     @Nullable
     public void changeEditor(FileEditor item) {
         currentPreview = myPreview.indexOf(item);
+
         splitter.setSecondComponent(myPreview.get(currentPreview).getComponent());
+    }
+
+    @Nullable
+    public void changeDebugAndRun(List<AnAction> item) {
+        currentChosenGroup = debugAndRun.indexOf(item);
+        currentGroup.removeAll();
+        List<AnAction> current = debugAndRun.get(currentChosenGroup);
+        currentGroup.addAll(current);
     }
 
     @Nullable
@@ -431,7 +461,7 @@ public class CustomEditor extends UserDataHolderBase implements TextEditor {
         }
     }
 
-    private ActionGroup createBuildActionGroup() {
+    private void createBuildActionGroup() {
 //        DumbService.getInstance(myEditor.getEditor().getProject()).runWhenSmart(() -> {
             final String name = myEditor.getFile().getNameWithoutExtension();
             final String truePath = myEditor.getFile().getPath();
@@ -441,15 +471,15 @@ public class CustomEditor extends UserDataHolderBase implements TextEditor {
             TestRunLineMarkerProvider ex = new TestRunLineMarkerProvider();
             for (PsiMethod testMethod : testMethods) {
                 System.out.println("Processing " + testMethod.getName());
-                PsiElement first = Arrays
+                PsiElement identifier = Arrays
                         .stream(testMethod.getChildren())
                         .filter(p -> p instanceof PsiIdentifier)
                         .findFirst()
                         .orElse(null);
-                if (first == null) {
+                if (identifier == null) {
                     continue;
                 }
-                RunLineMarkerContributor.Info info = ex.getInfo(first);
+                RunLineMarkerContributor.Info info = ex.getInfo(identifier);
                 if (info == null) {
                     continue;
                 }
@@ -457,11 +487,28 @@ public class CustomEditor extends UserDataHolderBase implements TextEditor {
                 if (allActions.length == 0) {
                     continue;
                 }
+                allActions = Arrays.copyOf(allActions, 2);
 
-                final DefaultActionGroup group = new DefaultActionGroup(Arrays.stream(allActions).map(it -> new AnAction() {
+                final List<AnAction> group = Arrays.stream(allActions).map(it -> new AnAction() {
                     @Override
                     public void actionPerformed(@NotNull AnActionEvent e) {
-
+                        final Map<String, Object> dataId2data = new HashMap<>();
+                        final Location<PsiElement> newLocation = PsiLocation.fromPsiElement(identifier);
+                        dataId2data.put(ConfigurationContext.SHARED_CONTEXT.toString(), ConfigurationContext.createEmptyContextForLocation(newLocation));
+                        dataId2data.put(Location.DATA_KEY.getName(), newLocation);
+                        final DataContext dataContext = SimpleDataContext.getSimpleContext(
+                            dataId2data,
+                            e.getDataContext()
+                        );
+                        final AnActionEvent newEvent = new AnActionEvent(
+                            e.getInputEvent(),
+                            dataContext,
+                            e.getPlace(),
+                            e.getPresentation(),
+                            e.getActionManager(),
+                            e.getModifiers()
+                        );
+                        it.actionPerformed(newEvent);
                     }
 
                     @Override
@@ -469,25 +516,59 @@ public class CustomEditor extends UserDataHolderBase implements TextEditor {
                         it.update(e);
                         e.getPresentation().setEnabledAndVisible(true);
                     }
-                }).collect(Collectors.toList()));
-                group.setPopup(true);
-                return group;
+                }).collect(Collectors.toList());
+                AnAction first = group.get(0);
+                AnAction newAction1 = new AnAction() {
+                    @Override
+                    public void actionPerformed(@NotNull AnActionEvent e) {
+                        first.actionPerformed(e);
+                    }
+                    @Override
+                    public void update(@NotNull AnActionEvent e) {
+                        first.update(e);
+                        e.getPresentation().setIcon(AllIcons.Actions.Execute);
+                    }
+                };
+                AnAction second = group.get(1);
+                AnAction newAction2 = new AnAction() {
+                    @Override
+                    public void actionPerformed(@NotNull AnActionEvent e) {
+                        second.actionPerformed(e);
+                    }
+                    @Override
+                    public void update(@NotNull AnActionEvent e) {
+                        second.update(e);
+                        e.getPresentation().setIcon(AllIcons.Actions.StartDebugger);
+                    }
+                };
+                List<AnAction> finalActions = new ArrayList<>();
+                finalActions.add(newAction1);
+                finalActions.add(newAction2);
+                debugAndRun.add(finalActions);
+                PsiClass firstContainingClass = testMethod.getContainingClass();
+                while (firstContainingClass != firstContainingClass.getContainingClass() && firstContainingClass.getContainingClass() != null) {
+                    firstContainingClass = firstContainingClass.getContainingClass();
+                }
+                methodsClassNames.add(testMethod.getContainingClass().getName());
 //                ((DefaultActionGroup) actionGroup).add(new DefaultActionGroup(allActions));
 //                break;
             }
-            if (myComponent != null) {
-                myComponent.revalidate();
-                myComponent.repaint();
-            }
+//            if (myComponent != null) {
+//                myComponent.revalidate();
+//                myComponent.repaint();
+//            }
 //        });
-        throw new IllegalStateException();
     }
 
     @Nullable
     protected ActionToolbar createToolbar() {
 //        actionGroup = createPreviewActionGroup();
-        final ActionGroup actionGroup = createBuildActionGroup();
-        ActionToolbar actionToolbar = ActionManager.getInstance().createActionToolbar(TEXT_EDITOR_WITH_PREVIEW, actionGroup, true);
+        createBuildActionGroup();
+        ActionToolbar actionToolbar = ActionManager
+                .getInstance()
+                .createActionToolbar(TEXT_EDITOR_WITH_PREVIEW,
+                        new DefaultActionGroup(createPreviewActionGroup(), new GeneratedTestComboBox(), currentGroup),
+                        true);
         return actionToolbar;
     }
 
@@ -496,6 +577,39 @@ public class CustomEditor extends UserDataHolderBase implements TextEditor {
         return new DefaultActionGroup(new MyComboboxAction());
     }
 
+    private class GeneratedTestComboBox extends ComboBoxAction {
+
+        @Override
+        protected @NotNull DefaultActionGroup createPopupActionGroup(JComponent button) {
+            return new DefaultActionGroup();
+        }
+
+        @NotNull
+        @Override
+        public JComponent createCustomComponent(@NotNull Presentation presentation, @NotNull String place) {
+            final ComboBox box = new ComboBox(new DefaultComboBoxModel(debugAndRun.toArray()));
+            box.addActionListener((event) -> {
+                changeDebugAndRun((List<AnAction>) box.getItem());
+            });
+            box.setRenderer(new DefaultListCellRenderer() {
+                @Override
+                public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                    final Component originalComponent = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                    value = (List<AnAction>) value;
+                    int order = debugAndRun.indexOf(value);
+                    setText(methodsClassNames.get(order));
+                    return originalComponent;
+                }
+            });
+            box.putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true);
+            final JPanel panel = new JPanel();
+            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+            final JBLabel label = new JBLabel("Tests: ");
+            panel.add(label);
+            panel.add(box);
+            return panel;
+        }
+    }
     private class MyComboboxAction extends ComboBoxAction {
 
         @Override
@@ -525,7 +639,7 @@ public class CustomEditor extends UserDataHolderBase implements TextEditor {
             box.putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true);
             final JPanel panel = new JPanel();
             panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-            final JBLabel label = new JBLabel("Test file: ");
+            final JBLabel label = new JBLabel("dump files: ");
 //            label.setFont(JBUI.Fonts.smallFont());
             panel.add(label);
             panel.add(box);
