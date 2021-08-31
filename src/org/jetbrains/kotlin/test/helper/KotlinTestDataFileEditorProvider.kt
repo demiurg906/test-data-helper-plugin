@@ -35,7 +35,7 @@ class KotlinTestDataFileEditorProvider: AsyncFileEditorProvider {
                 }
                 println(allTestFile.size)
                 val editors = allTestFile.map { TextEditorProvider.getInstance().createEditor(project, it) }
-                return TestDataEditor(originalEditor, editors, 0)
+                return TestDataEditor(originalEditor, editors)
             }
         }
     }
