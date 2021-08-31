@@ -20,12 +20,11 @@ import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.pom.Navigatable
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiIdentifier
-import com.intellij.psi.PsiMethod
-import com.intellij.psi.PsiModifierListOwner
+import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
+import com.intellij.psi.util.parentOfType
+import com.intellij.psi.util.parentsOfType
 import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBLabel
@@ -364,11 +363,9 @@ class TestDataEditor(
             finalActions.add(newAction1)
             finalActions.add(newAction2)
             debugAndRun.add(finalActions)
-            var firstContainingClass = testMethod.containingClass
-            while (firstContainingClass !== firstContainingClass!!.containingClass && firstContainingClass!!.containingClass != null) {
-                firstContainingClass = firstContainingClass.containingClass
-            }
-            methodsClassNames.add(testMethod.containingClass!!.name!!)
+
+            val topLevelClass = testMethod.parentsOfType<PsiClass>().last()
+            methodsClassNames.add(topLevelClass.name!!)
         }
     }
 
