@@ -23,7 +23,6 @@ import com.intellij.pom.Navigatable
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
-import com.intellij.psi.util.parentOfType
 import com.intellij.psi.util.parentsOfType
 import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.JBSplitter
@@ -40,24 +39,16 @@ class TestDataEditor(
     private val baseEditor: TextEditor,
     private val splitEditors: List<FileEditor>,
     private var currentPreview: Int,
-    private val name: String = "TextEditorWithPreview",
-    private val myDefaultLayout: Layout = Layout.SHOW_EDITOR_AND_PREVIEW
+    private val name: String = "Test Data",
+    private val defaultEditorViewMode: EditorViewMode = EditorViewMode.BaseAndAdditionalEditor
 ) : UserDataHolderBase(), TextEditor {
-    private val listenersGenerator: ListenersMultimap = ListenersMultimap()
+    // ------------------------------------- components -------------------------------------
 
-    var myLayout: Layout by lazyVar {
+    private var editorViewMode: EditorViewMode by lazyVar {
         val lastUsed = PropertiesComponent.getInstance().getValue(layoutPropertyName)
-        Layout.fromName(lastUsed, myDefaultLayout)
+        EditorViewMode.fromName(lastUsed, defaultEditorViewMode)
     }
 
-    private val myComponent: JComponent by lazy {
-        adjustEditorsVisibility()
-        JBUI.Panels.simplePanel(splitter).addToTop(myToolbarWrapper)
-    }
-
-    private val myToolbarWrapper: SplitEditorToolbar by lazy {
-        createMarkdownToolbarWrapper(splitter)
-    }
     private val splitter: JBSplitter by lazy {
         JBSplitter(false, 0.5f, 0.15f, 0.85f).apply {
             splitterProportionKey = splitterProportionKey
@@ -66,189 +57,172 @@ class TestDataEditor(
             dividerWidth = 3
         }
     }
-    private val debugAndRun: MutableList<List<AnAction>> = ArrayList()
-    private var currentChosenGroup = 0
-    private val currentGroup = DefaultActionGroup()
-    private val methodsClassNames: MutableList<String> = ArrayList()
 
-    fun changeEditor(item: FileEditor) {
-        currentPreview = splitEditors.indexOf(item)
-        splitter.secondComponent = splitEditors[currentPreview].component
+    private val myComponent: JComponent by lazy {
+        adjustEditorsVisibility()
+        JBUI.Panels.simplePanel(splitter).addToTop(myToolbarWrapper)
     }
 
-    fun changeDebugAndRun(item: List<AnAction>) {
-        currentChosenGroup = debugAndRun.indexOf(item)
-        currentGroup.removeAll()
-        val current = debugAndRun[currentChosenGroup]
-        currentGroup.addAll(current)
-    }
-
-    override fun getBackgroundHighlighter(): BackgroundEditorHighlighter? {
-        return baseEditor.backgroundHighlighter
-    }
-
-    override fun getCurrentLocation(): FileEditorLocation? {
-        return baseEditor.currentLocation
-    }
-
-    override fun getStructureViewBuilder(): StructureViewBuilder? {
-        return baseEditor.structureViewBuilder
-    }
-
-    override fun dispose() {
-        Disposer.dispose(baseEditor)
-        val fileEditor = splitEditors[currentPreview]
-        fileEditor.dispose()
-    }
-
-    override fun selectNotify() {
-        baseEditor.selectNotify()
-        val fileEditor = splitEditors[currentPreview]
-        fileEditor.selectNotify()
-    }
-
-    override fun deselectNotify() {
-        baseEditor.deselectNotify()
-        val fileEditor = splitEditors[currentPreview]
-        fileEditor.deselectNotify()
-    }
-
-    override fun getComponent(): JComponent {
-        return myComponent
-    }
-
-    private fun collectMethods(baseName: String, path: String, truePath: String): List<PsiMethod> {
-        val project = editor.project
-        val cache = PsiShortNamesCache.getInstance(project)
-        val targetMethodName = "test" + Character.toUpperCase(baseName[0]) + baseName.substring(1)
-        val psiMethods = cache.getMethodsByName(
-            targetMethodName, GlobalSearchScope.allScope(
-                project!!
-            )
-        )
-        val methods = Arrays
-            .stream(psiMethods)
-            .filter { method: PsiMethod -> method.hasAnnotation("org.jetbrains.kotlin.test.TestMetadata") }
-            .collect(Collectors.toList())
-        val findingMethods: MutableList<PsiMethod> = ArrayList()
-        for (method in methods) {
-            val classPath = method.containingClass?.extractTestMetadataValue() ?: continue
-            val methodPathPart = method?.extractTestMetadataValue() ?: continue
-            val methodPath = "$path/$classPath/$methodPathPart"
-            println("$methodPath | $truePath")
-            if (methodPath == truePath) {
-                findingMethods.add(method)
-            }
+    private val myToolbarWrapper: SplitEditorToolbar by lazy {
+        fun ActionToolbar.updateConfig() {
+            setTargetComponent(splitter)
+            setReservePlaceAutoPopupIcon(false)
         }
-        return findingMethods
-    }
 
-    private fun PsiModifierListOwner?.extractTestMetadataValue(): String? {
-        return this?.getAnnotation("org.jetbrains.kotlin.test.TestMetadata")
-            ?.parameterList
-            ?.attributes
-            ?.get(0)
-            ?.literalValue
-    }
-
-    private fun createMarkdownToolbarWrapper(targetComponentForActions: JComponent): SplitEditorToolbar {
-        val leftToolbar = createToolbar()
-        leftToolbar.setTargetComponent(targetComponentForActions)
-        leftToolbar.setReservePlaceAutoPopupIcon(false)
-        val rightToolbar = createRightToolbar()
-        rightToolbar.setTargetComponent(targetComponentForActions)
-        rightToolbar.setReservePlaceAutoPopupIcon(false)
-        return SplitEditorToolbar(leftToolbar, rightToolbar)
-    }
-
-    override fun setState(state: FileEditorState) {
-        if (state !is MyFileEditorState) return
-        if (state.firstState != null) {
-            baseEditor.setState(state.firstState)
-        }
-        if (state.secondState != null) {
-            splitEditors[currentPreview].setState(state.secondState)
-        }
-        if (state.splitLayout != null) {
-            myLayout = state.splitLayout
-            invalidateLayout()
-        }
+        val leftToolbar = createFileChooserToolbar().apply { updateConfig() }
+        val rightToolbar = createTestRunToolbar().apply { updateConfig() }
+        SplitEditorToolbar(leftToolbar, rightToolbar)
     }
 
     private fun adjustEditorsVisibility() {
         baseEditor
             .component.isVisible =
-            myLayout == Layout.SHOW_EDITOR || myLayout == Layout.SHOW_EDITOR_AND_PREVIEW
+            editorViewMode == EditorViewMode.OnlyBaseEditor || editorViewMode == EditorViewMode.BaseAndAdditionalEditor
         splitEditors[currentPreview]
             .component.isVisible =
-            myLayout == Layout.SHOW_PREVIEW || myLayout == Layout.SHOW_EDITOR_AND_PREVIEW
+            editorViewMode == EditorViewMode.BaseAndAdditionalEditor
     }
 
-    private fun invalidateLayout() {
-        adjustEditorsVisibility()
-        myToolbarWrapper.refresh()
-        myComponent.repaint()
-        val focusComponent = preferredFocusedComponent
-        if (focusComponent != null) {
-            IdeFocusManager.findInstanceByComponent(focusComponent).requestFocus(focusComponent, true)
+    private val showEditorAction: ToggleAction
+        get() = ChangeViewModeAction(EditorViewMode.OnlyBaseEditor)
+    private val showEditorAndPreviewAction: ToggleAction
+        get() = ChangeViewModeAction(EditorViewMode.BaseAndAdditionalEditor)
+
+    enum class EditorViewMode(val presentableName: String, val icon: Icon) {
+        OnlyBaseEditor("Base Editor", AllIcons.General.LayoutEditorOnly),
+        BaseAndAdditionalEditor("Base and additional Editor", AllIcons.General.LayoutEditorPreview);
+
+        companion object {
+            fun fromName(name: String?, defaultValue: EditorViewMode): EditorViewMode {
+                for (mode in values()) {
+                    if (mode.presentableName == name) {
+                        return mode
+                    }
+                }
+                return defaultValue
+            }
         }
     }
 
-    override fun getPreferredFocusedComponent(): JComponent? {
-        return when (myLayout) {
-            Layout.SHOW_EDITOR_AND_PREVIEW, Layout.SHOW_EDITOR -> baseEditor.preferredFocusedComponent
-            Layout.SHOW_PREVIEW -> splitEditors[currentPreview].preferredFocusedComponent
+    private inner class ChangeViewModeAction(private val myActionLayout: EditorViewMode) : ToggleAction(
+        myActionLayout.presentableName,
+        myActionLayout.presentableName,
+        myActionLayout.icon
+    ), DumbAware {
+        override fun isSelected(e: AnActionEvent): Boolean {
+            return editorViewMode == myActionLayout
+        }
+
+        override fun setSelected(e: AnActionEvent, state: Boolean) {
+            if (state) {
+                editorViewMode = myActionLayout
+                PropertiesComponent.getInstance()
+                    .setValue(layoutPropertyName, editorViewMode.presentableName, defaultEditorViewMode.presentableName)
+                adjustEditorsVisibility()
+            }
         }
     }
 
-    override fun getName(): String {
-        return name
+    private fun createFileChooserToolbar(): ActionToolbar {
+        createBuildActionGroup()
+        return ActionManager
+            .getInstance()
+            .createActionToolbar(
+                ActionPlaces.TEXT_EDITOR_WITH_PREVIEW,
+                DefaultActionGroup(createPreviewActionGroup()),
+                true
+            )
     }
 
-    override fun getState(level: FileEditorStateLevel): FileEditorState {
-        return MyFileEditorState(myLayout, baseEditor.getState(level), splitEditors[currentPreview].getState(level))
+    private fun createPreviewActionGroup(): ActionGroup {
+        return DefaultActionGroup(ChooseAdditionalFileAction())
     }
 
-    override fun addPropertyChangeListener(listener: PropertyChangeListener) {
-        baseEditor.addPropertyChangeListener(listener)
-        splitEditors[currentPreview].addPropertyChangeListener(listener)
-        val delegate = listenersGenerator.addListenerAndGetDelegate(listener)
-        baseEditor.addPropertyChangeListener(delegate)
-        splitEditors[currentPreview].addPropertyChangeListener(delegate)
-    }
+    private inner class ChooseAdditionalFileAction : ComboBoxAction() {
+        override fun createPopupActionGroup(button: JComponent): DefaultActionGroup {
+            return DefaultActionGroup()
+        }
 
-    override fun removePropertyChangeListener(listener: PropertyChangeListener) {
-        baseEditor.removePropertyChangeListener(listener)
-        splitEditors[currentPreview].removePropertyChangeListener(listener)
-        val delegate = listenersGenerator.removeListenerAndGetDelegate(listener)
-        if (delegate != null) {
-            baseEditor.removePropertyChangeListener(delegate)
-            splitEditors[currentPreview].removePropertyChangeListener(delegate)
+        override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
+            val box: ComboBox<*> = ComboBox(DefaultComboBoxModel<Any?>(splitEditors.toTypedArray()))
+            box.addActionListener { changeEditor(box.item as FileEditor) }
+            box.renderer = object : DefaultListCellRenderer() {
+                override fun getListCellRendererComponent(
+                    list: JList<*>?,
+                    value: Any,
+                    index: Int,
+                    isSelected: Boolean,
+                    cellHasFocus: Boolean
+                ): Component {
+                    val originalComponent =
+                        super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
+                    text = if (value is FileEditor) {
+                        Objects.requireNonNull(value)!!
+                            .file!!.name
+                    } else {
+                        "#########"
+                    }
+                    return originalComponent
+                }
+            }
+            box.putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true)
+            val panel = JPanel()
+            panel.layout = BoxLayout(panel, BoxLayout.X_AXIS)
+            val label = JBLabel("Dump files: ")
+            //            label.setFont(JBUI.Fonts.smallFont());
+            panel.add(label)
+            panel.add(box)
+            return panel
         }
     }
 
-    class MyFileEditorState(
-        val splitLayout: Layout?,
-        val firstState: FileEditorState?,
-        val secondState: FileEditorState?
-    ) : FileEditorState {
-        override fun canBeMergedWith(otherState: FileEditorState, level: FileEditorStateLevel): Boolean {
-            return (otherState is MyFileEditorState
-                    && (firstState == null || firstState.canBeMergedWith(otherState.firstState!!, level))
-                    && (secondState == null || secondState.canBeMergedWith(otherState.secondState!!, level)))
+    private fun createTestRunToolbar(): ActionToolbar {
+        createBuildActionGroup()
+        return ActionManager
+            .getInstance()
+            .createActionToolbar(
+                ActionPlaces.TEXT_EDITOR_WITH_PREVIEW,
+                DefaultActionGroup(GeneratedTestComboBoxAction(), currentGroup),
+                true
+            )
+    }
+
+    private inner class GeneratedTestComboBoxAction : ComboBoxAction() {
+        override fun createPopupActionGroup(button: JComponent): DefaultActionGroup {
+            return DefaultActionGroup()
+        }
+
+        override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
+            val box = ComboBox(DefaultComboBoxModel(debugAndRun.toTypedArray()))
+            box.addActionListener { changeDebugAndRun(box.item) }
+            box.renderer = object : DefaultListCellRenderer() {
+                override fun getListCellRendererComponent(
+                    list: JList<*>?,
+                    value: Any,
+                    index: Int,
+                    isSelected: Boolean,
+                    cellHasFocus: Boolean
+                ): Component {
+                    val originalComponent = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
+                    val order = debugAndRun.indexOf(value)
+                    text = methodsClassNames[order]
+                    return originalComponent
+                }
+            }
+            box.putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true)
+            val panel = JPanel()
+            panel.layout = BoxLayout(panel, BoxLayout.X_AXIS)
+            val label = JBLabel("Tests: ")
+            panel.add(label)
+            panel.add(box)
+            return panel
         }
     }
 
-    override fun isModified(): Boolean {
-        return baseEditor.isModified || splitEditors[currentPreview].isModified
-    }
 
-    override fun isValid(): Boolean {
-        return baseEditor.isValid && splitEditors[currentPreview].isValid
-    }
+    // ------------------------------------- actions -------------------------------------
 
-    private inner class DoublingEventListenerDelegate(private val myDelegate: PropertyChangeListener) :
-        PropertyChangeListener {
+    private inner class DoublingEventListenerDelegate(private val myDelegate: PropertyChangeListener) : PropertyChangeListener {
         override fun propertyChange(evt: PropertyChangeEvent) {
             myDelegate.propertyChange(
                 PropertyChangeEvent(this, evt.propertyName, evt.oldValue, evt.newValue)
@@ -369,153 +343,168 @@ class TestDataEditor(
         }
     }
 
-    private fun createToolbar(): ActionToolbar {
-        createBuildActionGroup()
-        return ActionManager
-            .getInstance()
-            .createActionToolbar(
-                ActionPlaces.TEXT_EDITOR_WITH_PREVIEW,
-                DefaultActionGroup(createPreviewActionGroup(), GeneratedTestComboBox(), currentGroup),
-                true
+    // ------------------------------------- unsorted -------------------------------------
+
+    private val debugAndRun: MutableList<List<AnAction>> = ArrayList()
+    private var currentChosenGroup = 0
+    private val currentGroup = DefaultActionGroup()
+
+    private val methodsClassNames: MutableList<String> = ArrayList()
+
+    private val listenersGenerator: ListenersMultimap = ListenersMultimap()
+
+    fun changeEditor(item: FileEditor) {
+        currentPreview = splitEditors.indexOf(item)
+        splitter.secondComponent = splitEditors[currentPreview].component
+    }
+
+    private fun collectMethods(baseName: String, path: String, truePath: String): List<PsiMethod> {
+        val project = editor.project
+        val cache = PsiShortNamesCache.getInstance(project)
+        val targetMethodName = "test" + Character.toUpperCase(baseName[0]) + baseName.substring(1)
+        val psiMethods = cache.getMethodsByName(
+            targetMethodName, GlobalSearchScope.allScope(
+                project!!
             )
-    }
-
-    private fun createPreviewActionGroup(): ActionGroup {
-        return DefaultActionGroup(MyComboboxAction())
-    }
-
-    private inner class GeneratedTestComboBox : ComboBoxAction() {
-        override fun createPopupActionGroup(button: JComponent): DefaultActionGroup {
-            return DefaultActionGroup()
-        }
-
-        override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
-            val box = ComboBox(DefaultComboBoxModel(debugAndRun.toTypedArray()))
-            box.addActionListener { changeDebugAndRun(box.item) }
-            box.renderer = object : DefaultListCellRenderer() {
-                override fun getListCellRendererComponent(
-                    list: JList<*>?,
-                    value: Any,
-                    index: Int,
-                    isSelected: Boolean,
-                    cellHasFocus: Boolean
-                ): Component {
-                    val originalComponent = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
-                    val order = debugAndRun.indexOf(value)
-                    text = methodsClassNames[order]
-                    return originalComponent
-                }
-            }
-            box.putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true)
-            val panel = JPanel()
-            panel.layout = BoxLayout(panel, BoxLayout.X_AXIS)
-            val label = JBLabel("Tests: ")
-            panel.add(label)
-            panel.add(box)
-            return panel
-        }
-    }
-
-    private inner class MyComboboxAction : ComboBoxAction() {
-        override fun createPopupActionGroup(button: JComponent): DefaultActionGroup {
-            return DefaultActionGroup()
-        }
-
-        override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
-            val box: ComboBox<*> = ComboBox(DefaultComboBoxModel<Any?>(splitEditors.toTypedArray()))
-            box.addActionListener { changeEditor(box.item as FileEditor) }
-            box.renderer = object : DefaultListCellRenderer() {
-                override fun getListCellRendererComponent(
-                    list: JList<*>?,
-                    value: Any,
-                    index: Int,
-                    isSelected: Boolean,
-                    cellHasFocus: Boolean
-                ): Component {
-                    val originalComponent =
-                        super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
-                    text = if (value is FileEditor) {
-                        Objects.requireNonNull(value)!!
-                            .file!!.name
-                    } else {
-                        "#########"
-                    }
-                    return originalComponent
-                }
-            }
-            box.putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true)
-            val panel = JPanel()
-            panel.layout = BoxLayout(panel, BoxLayout.X_AXIS)
-            val label = JBLabel("Dump files: ")
-            //            label.setFont(JBUI.Fonts.smallFont());
-            panel.add(label)
-            panel.add(box)
-            return panel
-        }
-    }
-
-    private fun createRightToolbar(): ActionToolbar {
-        val viewActions = createViewActionGroup()
-        val group = createRightToolbarActionGroup()
-        val rightToolbarActions =
-            if (group == null) viewActions else DefaultActionGroup(group, Separator.create(), viewActions)
-        return ActionManager.getInstance()
-            .createActionToolbar(ActionPlaces.TEXT_EDITOR_WITH_PREVIEW, rightToolbarActions, true)
-    }
-
-    private fun createViewActionGroup(): ActionGroup {
-        return DefaultActionGroup(
-            showEditorAction,
-            showEditorAndPreviewAction,
-            showPreviewAction
         )
-    }
-
-    private fun createRightToolbarActionGroup(): ActionGroup? {
-        return null
-    }
-
-    private val showEditorAction: ToggleAction
-        get() = ChangeViewModeAction(Layout.SHOW_EDITOR)
-    private val showPreviewAction: ToggleAction
-        get() = ChangeViewModeAction(Layout.SHOW_PREVIEW)
-    private val showEditorAndPreviewAction: ToggleAction
-        get() = ChangeViewModeAction(Layout.SHOW_EDITOR_AND_PREVIEW)
-
-    enum class Layout(val presentableName: String, val icon: Icon) {
-        SHOW_EDITOR("Editor only", AllIcons.General.LayoutEditorOnly),
-        SHOW_PREVIEW("Preview only", AllIcons.General.LayoutPreviewOnly),
-        SHOW_EDITOR_AND_PREVIEW("Editor and Preview", AllIcons.General.LayoutEditorPreview);
-
-        companion object {
-            fun fromName(name: String?, defaultValue: Layout): Layout {
-                for (layout in values()) {
-                    if (layout.presentableName == name) {
-                        return layout
-                    }
-                }
-                return defaultValue
+        val methods = Arrays
+            .stream(psiMethods)
+            .filter { method: PsiMethod -> method.hasAnnotation("org.jetbrains.kotlin.test.TestMetadata") }
+            .collect(Collectors.toList())
+        val findingMethods: MutableList<PsiMethod> = ArrayList()
+        for (method in methods) {
+            val classPath = method.containingClass?.extractTestMetadataValue() ?: continue
+            val methodPathPart = method?.extractTestMetadataValue() ?: continue
+            val methodPath = "$path/$classPath/$methodPathPart"
+            println("$methodPath | $truePath")
+            if (methodPath == truePath) {
+                findingMethods.add(method)
             }
         }
+        return findingMethods
     }
 
-    private inner class ChangeViewModeAction(private val myActionLayout: Layout) : ToggleAction(
-        myActionLayout.presentableName,
-        myActionLayout.presentableName,
-        myActionLayout.icon
-    ), DumbAware {
-        override fun isSelected(e: AnActionEvent): Boolean {
-            return myLayout == myActionLayout
-        }
+    private fun PsiModifierListOwner?.extractTestMetadataValue(): String? {
+        return this?.getAnnotation("org.jetbrains.kotlin.test.TestMetadata")
+            ?.parameterList
+            ?.attributes
+            ?.get(0)
+            ?.literalValue
+    }
 
-        override fun setSelected(e: AnActionEvent, state: Boolean) {
-            if (state) {
-                myLayout = myActionLayout
-                PropertiesComponent.getInstance()
-                    .setValue(layoutPropertyName, myLayout.presentableName, myDefaultLayout.presentableName)
-                adjustEditorsVisibility()
-            }
+    override fun setState(state: FileEditorState) {
+        if (state !is MyFileEditorState) return
+        if (state.firstState != null) {
+            baseEditor.setState(state.firstState)
         }
+        if (state.secondState != null) {
+            splitEditors[currentPreview].setState(state.secondState)
+        }
+        if (state.splitLayout != null) {
+            editorViewMode = state.splitLayout
+            invalidateLayout()
+        }
+    }
+
+    private fun invalidateLayout() {
+        adjustEditorsVisibility()
+        myToolbarWrapper.refresh()
+        myComponent.repaint()
+        val focusComponent = preferredFocusedComponent
+        if (focusComponent != null) {
+            IdeFocusManager.findInstanceByComponent(focusComponent).requestFocus(focusComponent, true)
+        }
+    }
+
+    override fun addPropertyChangeListener(listener: PropertyChangeListener) {
+        baseEditor.addPropertyChangeListener(listener)
+        splitEditors[currentPreview].addPropertyChangeListener(listener)
+        val delegate = listenersGenerator.addListenerAndGetDelegate(listener)
+        baseEditor.addPropertyChangeListener(delegate)
+        splitEditors[currentPreview].addPropertyChangeListener(delegate)
+    }
+
+    override fun removePropertyChangeListener(listener: PropertyChangeListener) {
+        baseEditor.removePropertyChangeListener(listener)
+        splitEditors[currentPreview].removePropertyChangeListener(listener)
+        val delegate = listenersGenerator.removeListenerAndGetDelegate(listener)
+        if (delegate != null) {
+            baseEditor.removePropertyChangeListener(delegate)
+            splitEditors[currentPreview].removePropertyChangeListener(delegate)
+        }
+    }
+
+    fun changeDebugAndRun(item: List<AnAction>) {
+        currentChosenGroup = debugAndRun.indexOf(item)
+        currentGroup.removeAll()
+        val current = debugAndRun[currentChosenGroup]
+        currentGroup.addAll(current)
+    }
+
+
+    class MyFileEditorState(
+        val splitLayout: EditorViewMode?,
+        val firstState: FileEditorState?,
+        val secondState: FileEditorState?
+    ) : FileEditorState {
+        override fun canBeMergedWith(otherState: FileEditorState, level: FileEditorStateLevel): Boolean {
+            return (otherState is MyFileEditorState
+                    && (firstState == null || firstState.canBeMergedWith(otherState.firstState!!, level))
+                    && (secondState == null || secondState.canBeMergedWith(otherState.secondState!!, level)))
+        }
+    }
+
+    // ------------------------------------- default methods -------------------------------------
+
+    override fun getComponent(): JComponent {
+        return myComponent
+    }
+
+    override fun getBackgroundHighlighter(): BackgroundEditorHighlighter? {
+        return baseEditor.backgroundHighlighter
+    }
+
+    override fun getCurrentLocation(): FileEditorLocation? {
+        return baseEditor.currentLocation
+    }
+
+    override fun getStructureViewBuilder(): StructureViewBuilder? {
+        return baseEditor.structureViewBuilder
+    }
+
+    override fun dispose() {
+        Disposer.dispose(baseEditor)
+        splitEditors.forEach { it.dispose() }
+    }
+
+    override fun selectNotify() {
+        baseEditor.selectNotify()
+        splitEditors.forEach { it.selectNotify() }
+    }
+
+    override fun deselectNotify() {
+        baseEditor.deselectNotify()
+        splitEditors.forEach { it.deselectNotify() }
+    }
+
+    override fun getPreferredFocusedComponent(): JComponent? {
+        return baseEditor.preferredFocusedComponent
+    }
+
+    override fun getName(): String {
+        return name
+    }
+
+    override fun getState(level: FileEditorStateLevel): FileEditorState {
+        return MyFileEditorState(editorViewMode, baseEditor.getState(level), splitEditors[currentPreview].getState(level))
+    }
+
+    override fun isModified(): Boolean {
+        return baseEditor.isModified || splitEditors.any { it.isModified }
+    }
+
+    override fun isValid(): Boolean {
+        return baseEditor.isValid && splitEditors.all { it.isValid }
     }
 
     private val layoutPropertyName: String
