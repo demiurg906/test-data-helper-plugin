@@ -1,769 +1,610 @@
+package org.jetbrains.plugins.template.ui.editor
+
+import com.intellij.codeHighlighting.BackgroundEditorHighlighter
+import com.intellij.execution.Location
+import com.intellij.execution.PsiLocation
+import com.intellij.execution.actions.ConfigurationContext
+import com.intellij.icons.AllIcons
+import com.intellij.ide.structureView.StructureViewBuilder
+import com.intellij.ide.ui.laf.darcula.DarculaUIUtil
+import com.intellij.ide.util.PropertiesComponent
+import com.intellij.openapi.actionSystem.*
+import com.intellij.openapi.actionSystem.ex.ComboBoxAction
+import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.fileEditor.*
+import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.Pair
+import com.intellij.openapi.util.UserDataHolderBase
+import com.intellij.openapi.util.text.StringUtil
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.wm.IdeFocusManager
+import com.intellij.pom.Navigatable
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiIdentifier
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.PsiShortNamesCache
+import com.intellij.testIntegration.TestRunLineMarkerProvider
+import com.intellij.ui.JBSplitter
+import com.intellij.ui.components.JBLabel
+import com.intellij.util.ui.JBUI
+import java.awt.Component
+import java.awt.event.ActionEvent
+import java.beans.PropertyChangeEvent
+import java.beans.PropertyChangeListener
+import java.util.*
+import java.util.stream.Collectors
+import javax.swing.*
+import kotlin.properties.ReadWriteProperty
+import kotlin.reflect.KProperty
 
 
-package org.jetbrains.plugins.template.ui.editor;
+fun <T : Any> lazyVar(init: () -> T) : ReadWriteProperty<Any?, T> {
+    return object : ReadWriteProperty<Any?, T> {
+        private var value: T? = null
 
-
-import static com.intellij.openapi.actionSystem.ActionPlaces.TEXT_EDITOR_WITH_PREVIEW;
-
-import com.intellij.codeHighlighting.BackgroundEditorHighlighter;
-import com.intellij.execution.Location;
-import com.intellij.execution.PsiLocation;
-import com.intellij.execution.actions.ConfigurationContext;
-import com.intellij.execution.lineMarker.RunLineMarkerContributor;
-import com.intellij.icons.AllIcons;
-import com.intellij.ide.structureView.StructureViewBuilder;
-import com.intellij.ide.ui.laf.darcula.DarculaUIUtil;
-import com.intellij.ide.util.PropertiesComponent;
-import com.intellij.openapi.actionSystem.ActionGroup;
-import com.intellij.openapi.actionSystem.ActionManager;
-import com.intellij.openapi.actionSystem.ActionToolbar;
-import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.actionSystem.DataContext;
-import com.intellij.openapi.actionSystem.DefaultActionGroup;
-import com.intellij.openapi.actionSystem.Presentation;
-import com.intellij.openapi.actionSystem.Separator;
-import com.intellij.openapi.actionSystem.ToggleAction;
-import com.intellij.openapi.actionSystem.ex.ComboBoxAction;
-import com.intellij.openapi.actionSystem.impl.SimpleDataContext;
-import com.intellij.openapi.editor.Editor;
-import com.intellij.openapi.fileEditor.FileEditor;
-import com.intellij.openapi.fileEditor.FileEditorLocation;
-import com.intellij.openapi.fileEditor.FileEditorState;
-import com.intellij.openapi.fileEditor.FileEditorStateLevel;
-import com.intellij.openapi.fileEditor.SplitEditorToolbar;
-import com.intellij.openapi.fileEditor.TextEditor;
-import com.intellij.openapi.project.DumbAware;
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.ComboBox;
-import com.intellij.openapi.util.Disposer;
-import com.intellij.openapi.util.Pair;
-import com.intellij.openapi.util.UserDataHolderBase;
-import com.intellij.openapi.util.text.StringUtil;
-import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.openapi.wm.IdeFocusManager;
-import com.intellij.pom.Navigatable;
-import com.intellij.psi.PsiClass;
-import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiIdentifier;
-import com.intellij.psi.PsiMethod;
-import com.intellij.psi.search.GlobalSearchScope;
-import com.intellij.psi.search.PsiShortNamesCache;
-import com.intellij.testIntegration.TestRunLineMarkerProvider;
-import com.intellij.ui.JBSplitter;
-import com.intellij.ui.components.JBLabel;
-import com.intellij.util.ui.JBUI;
-import java.awt.Component;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
-import javax.swing.BoxLayout;
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.DefaultListCellRenderer;
-import javax.swing.Icon;
-import javax.swing.JComponent;
-import javax.swing.JList;
-import javax.swing.JPanel;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-
-public class CustomEditor extends UserDataHolderBase implements TextEditor {
-    protected final TextEditor myEditor;
-    protected final List<FileEditor> myPreview;
-    @NotNull
-    private final MyListenersMultimap myListenersGenerator = new MyListenersMultimap();
-    private final Layout myDefaultLayout;
-    private Layout myLayout;
-    private JComponent myComponent;
-    private SplitEditorToolbar myToolbarWrapper;
-    private final String myName;
-    private int currentPreview;
-    private JBSplitter splitter = null;
-    private List<List<AnAction>> debugAndRun = new ArrayList<>();
-    private int currentChosenGroup = 0;
-    private DefaultActionGroup currentGroup = new DefaultActionGroup();
-    private List<String> methodsClassNames = new ArrayList<>();
-
-    public CustomEditor(@NotNull TextEditor editor,
-                                 @NotNull List<FileEditor> preview,
-                                 @NotNull String editorName,
-                                 @NotNull Layout defaultLayout,
-                                int curPreview
-    ) {
-        myEditor = editor;
-        myPreview = preview;
-        myName = editorName;
-        myDefaultLayout = defaultLayout;
-        currentPreview = curPreview;
-    }
-
-    public CustomEditor(@NotNull TextEditor editor,
-                        @NotNull List<FileEditor> preview,
-                        @NotNull String editorName,
-                        int curPreview) {
-        this(editor, preview, editorName, Layout.SHOW_EDITOR_AND_PREVIEW, curPreview);
-    }
-
-    public CustomEditor(@NotNull TextEditor editor,
-                        @NotNull List<FileEditor> preview,
-                        int curPreview) {
-        this(editor, preview, "TextEditorWithPreview", curPreview);
-    }
-
-    @Nullable
-    public void changeEditor(FileEditor item) {
-        currentPreview = myPreview.indexOf(item);
-
-        splitter.setSecondComponent(myPreview.get(currentPreview).getComponent());
-    }
-
-    @Nullable
-    public void changeDebugAndRun(List<AnAction> item) {
-        currentChosenGroup = debugAndRun.indexOf(item);
-        currentGroup.removeAll();
-        List<AnAction> current = debugAndRun.get(currentChosenGroup);
-        currentGroup.addAll(current);
-    }
-
-    @Nullable
-    @Override
-    public BackgroundEditorHighlighter getBackgroundHighlighter() {
-        return myEditor.getBackgroundHighlighter();
-    }
-
-    @Nullable
-    @Override
-    public FileEditorLocation getCurrentLocation() {
-        return myEditor.getCurrentLocation();
-    }
-
-    @Nullable
-    @Override
-    public StructureViewBuilder getStructureViewBuilder() {
-        return myEditor.getStructureViewBuilder();
-    }
-
-    @Override
-    public void dispose() {
-        Disposer.dispose(myEditor);
-        FileEditor fileEditor = myPreview.get(currentPreview);
-        fileEditor.dispose();
-    }
-
-    @Override
-    public void selectNotify() {
-        myEditor.selectNotify();
-        FileEditor fileEditor = myPreview.get(currentPreview);
-        fileEditor.selectNotify();
-    }
-
-    @Override
-    public void deselectNotify() {
-        myEditor.deselectNotify();
-        FileEditor fileEditor = myPreview.get(currentPreview);
-        fileEditor.deselectNotify();
-    }
-
-    @NotNull
-    @Override
-    public JComponent getComponent() {
-        if (myComponent == null) {
-            splitter = new JBSplitter(false, 0.5f, 0.15f, 0.85f);
-            splitter.setSplitterProportionKey(getSplitterProportionKey());
-            splitter.setFirstComponent(myEditor.getComponent());
-            splitter.setSecondComponent(myPreview.get(currentPreview).getComponent());
-            splitter.setDividerWidth(3);
-
-            myToolbarWrapper = createMarkdownToolbarWrapper(splitter);
-
-            if (myLayout == null) {
-                String lastUsed = PropertiesComponent.getInstance().getValue(getLayoutPropertyName());
-                myLayout = Layout.fromName(lastUsed, myDefaultLayout);
+        override fun getValue(thisRef: Any?, property: KProperty<*>): T {
+            if (value == null) {
+                value = init()
             }
-            adjustEditorsVisibility();
-
-            myComponent = JBUI.Panels.simplePanel(splitter).addToTop(myToolbarWrapper);
+            return value!!
         }
-        return myComponent;
+
+        override fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
+            this.value = value
+        }
+    }
+}
+
+class CustomEditor(
+    val myEditor: TextEditor,
+    protected val myPreview: List<FileEditor>,
+    private val myName: String,
+    private val myDefaultLayout: Layout,
+    private var currentPreview: Int
+) : UserDataHolderBase(), TextEditor {
+    private val myListenersGenerator: MyListenersMultimap = MyListenersMultimap()
+    var myLayout: Layout by lazyVar {
+        val lastUsed = PropertiesComponent.getInstance().getValue(layoutPropertyName)
+        Layout.fromName(lastUsed, myDefaultLayout)
     }
 
-    private @NotNull List<PsiMethod> collectMethods(@NotNull String baseName, @NotNull String path, @NotNull String truePath) {
-        System.out.println(baseName + " | " + path + " | " + truePath);
-        final Project project = getEditor().getProject();
-        final PsiShortNamesCache cache = PsiShortNamesCache.getInstance(project);
-        final String targetMethodName = "test" + Character.toUpperCase(baseName.charAt(0)) + baseName.substring(1);
-        System.out.println( "method searching name : " + targetMethodName);
-        final PsiMethod[] psiMethods = cache.getMethodsByName(targetMethodName, GlobalSearchScope.allScope(project));
-        List<PsiMethod> methods = Arrays
-                .stream(psiMethods)
-                .filter(method -> method.hasAnnotation("org.jetbrains.kotlin.test.TestMetadata"))
-                .collect(Collectors.toList());
-        System.out.println( "find methods: " + methods.size());
+    private val myComponent: JComponent by lazy {
+        adjustEditorsVisibility()
+        JBUI.Panels.simplePanel(splitter).addToTop(myToolbarWrapper)
+    }
 
-        List<PsiMethod> findingMethods = new ArrayList<>();
-        for (PsiMethod method: methods) {
-            final String classPath = method.getContainingClass()
-                    .getAnnotation("org.jetbrains.kotlin.test.TestMetadata")
-                    .getParameterList()
-                    .getAttributes()[0]
-                    .getLiteralValue();
-            final String methodPathPart = method
-                    .getAnnotation("org.jetbrains.kotlin.test.TestMetadata")
-                    .getParameterList()
-                    .getAttributes()[0]
-                    .getLiteralValue();
-           // D:\programming\summer_nir\kotlin\kotlin\compiler\testData\diagnostics\nativeTests\sharedImmutable.kt
-            final String methodPath = path + '/' + classPath + '/' + methodPathPart;
-            System.out.println( methodPath + " | " + truePath);
-            if (methodPath.equals(truePath)) {
-                findingMethods.add(method);
+    private val myToolbarWrapper: SplitEditorToolbar by lazy {
+        createMarkdownToolbarWrapper(splitter)
+    }
+    private val splitter: JBSplitter by lazy {
+        JBSplitter(false, 0.5f, 0.15f, 0.85f).apply {
+            splitterProportionKey = splitterProportionKey
+            firstComponent = myEditor.component
+            secondComponent = myPreview[currentPreview].component
+            dividerWidth = 3
+        }
+    }
+    private val debugAndRun: MutableList<List<AnAction>> = ArrayList()
+    private var currentChosenGroup = 0
+    private val currentGroup = DefaultActionGroup()
+    private val methodsClassNames: MutableList<String> = ArrayList()
+
+    constructor(
+        editor: TextEditor,
+        preview: List<FileEditor>,
+        editorName: String,
+        curPreview: Int
+    ) : this(editor, preview, editorName, Layout.SHOW_EDITOR_AND_PREVIEW, curPreview) {
+    }
+
+    constructor(
+        editor: TextEditor,
+        preview: List<FileEditor>,
+        curPreview: Int
+    ) : this(editor, preview, "TextEditorWithPreview", curPreview) {
+    }
+
+    fun changeEditor(item: FileEditor) {
+        currentPreview = myPreview.indexOf(item)
+        splitter.secondComponent = myPreview[currentPreview].component
+    }
+
+    fun changeDebugAndRun(item: List<AnAction>) {
+        currentChosenGroup = debugAndRun.indexOf(item)
+        currentGroup.removeAll()
+        val current = debugAndRun[currentChosenGroup]
+        currentGroup.addAll(current)
+    }
+
+    override fun getBackgroundHighlighter(): BackgroundEditorHighlighter? {
+        return myEditor.backgroundHighlighter
+    }
+
+    override fun getCurrentLocation(): FileEditorLocation? {
+        return myEditor.currentLocation
+    }
+
+    override fun getStructureViewBuilder(): StructureViewBuilder? {
+        return myEditor.structureViewBuilder
+    }
+
+    override fun dispose() {
+        Disposer.dispose(myEditor)
+        val fileEditor = myPreview[currentPreview]
+        fileEditor.dispose()
+    }
+
+    override fun selectNotify() {
+        myEditor.selectNotify()
+        val fileEditor = myPreview[currentPreview]
+        fileEditor.selectNotify()
+    }
+
+    override fun deselectNotify() {
+        myEditor.deselectNotify()
+        val fileEditor = myPreview[currentPreview]
+        fileEditor.deselectNotify()
+    }
+
+    override fun getComponent(): JComponent {
+        return myComponent
+    }
+
+    private fun collectMethods(baseName: String, path: String, truePath: String): List<PsiMethod> {
+        val project = editor.project
+        val cache = PsiShortNamesCache.getInstance(project)
+        val targetMethodName = "test" + Character.toUpperCase(baseName[0]) + baseName.substring(1)
+        val psiMethods = cache.getMethodsByName(
+            targetMethodName, GlobalSearchScope.allScope(
+                project!!
+            )
+        )
+        val methods = Arrays
+            .stream(psiMethods)
+            .filter { method: PsiMethod -> method.hasAnnotation("org.jetbrains.kotlin.test.TestMetadata") }
+            .collect(Collectors.toList())
+        val findingMethods: MutableList<PsiMethod> = ArrayList()
+        for (method in methods) {
+            val classPath = method.containingClass
+                ?.getAnnotation("org.jetbrains.kotlin.test.TestMetadata")
+                ?.getParameterList()
+                ?.attributes
+                ?.get(0)
+                ?.literalValue
+                ?: TODO()
+            val methodPathPart = method
+                ?.getAnnotation("org.jetbrains.kotlin.test.TestMetadata")
+                ?.getParameterList()
+                ?.attributes
+                ?.get(0)
+                ?.literalValue
+                ?: TODO()
+            val methodPath = "$path/$classPath/$methodPathPart"
+            println("$methodPath | $truePath")
+            if (methodPath == truePath) {
+                findingMethods.add(method)
             }
         }
-        return findingMethods;
+        return findingMethods
     }
 
-    private @NotNull List<String> collectTestMethods(@NotNull String baseName) {
-        //System.out.println("Searching for file: " + baseName);
-        final Project project = getEditor().getProject();
-        final PsiShortNamesCache cache = PsiShortNamesCache.getInstance(project);
-        final String targetName = baseName + "Generated";
-        final String targetMethodName = "test" + Character.toUpperCase(baseName.charAt(0)) + baseName.substring(1);
-        System.out.println(targetMethodName);
-      //  System.out.println("Target file name: " + targetName);
-        final PsiClass[] classes = cache.getClassesByName(targetName, GlobalSearchScope.allScope(project));
-        final PsiMethod[] psiMethods = cache.getMethodsByName(targetName, GlobalSearchScope.allScope(project));
-        System.out.println("Size: " + classes.length);
-        for (PsiClass cls: classes) {
-            //System.out.println(cls);
-            final List<PsiMethod> methods = Arrays.stream(cls.getAllMethods())
-                    .filter(method -> StringUtil.startsWith(method.getName(), "test"))
-                    .collect(Collectors.toList());
-            for (PsiMethod method: methods) {
-             //   System.out.println(method.getName());
+    private fun collectTestMethods(baseName: String): List<String> {
+        val project = editor.project
+        val cache = PsiShortNamesCache.getInstance(project)
+        val targetName = baseName + "Generated"
+        val targetMethodName = "test" + Character.toUpperCase(baseName[0]) + baseName.substring(1)
+        val classes = cache.getClassesByName(targetName, GlobalSearchScope.allScope(project!!))
+        val psiMethods = cache.getMethodsByName(targetName, GlobalSearchScope.allScope(project))
+        for (cls in classes) {
+            val methods = Arrays.stream(cls.allMethods)
+                .filter { method: PsiMethod -> StringUtil.startsWith(method.name, "test") }
+                .collect(Collectors.toList())
+            for (method in methods) {
+                //   System.out.println(method.getName());
             }
         }
-        return Collections.emptyList();
+        return emptyList()
     }
 
-    @NotNull
-    private SplitEditorToolbar createMarkdownToolbarWrapper(@NotNull JComponent targetComponentForActions) {
-        final ActionToolbar leftToolbar = createToolbar();
+    private fun createMarkdownToolbarWrapper(targetComponentForActions: JComponent): SplitEditorToolbar {
+        val leftToolbar = createToolbar()
         if (leftToolbar != null) {
-            leftToolbar.setTargetComponent(targetComponentForActions);
-            leftToolbar.setReservePlaceAutoPopupIcon(false);
+            leftToolbar.setTargetComponent(targetComponentForActions)
+            leftToolbar.setReservePlaceAutoPopupIcon(false)
         }
-
-        final ActionToolbar rightToolbar = createRightToolbar();
-        rightToolbar.setTargetComponent(targetComponentForActions);
-        rightToolbar.setReservePlaceAutoPopupIcon(false);
-
-        return new SplitEditorToolbar(leftToolbar, rightToolbar);
+        val rightToolbar = createRightToolbar()
+        rightToolbar.setTargetComponent(targetComponentForActions)
+        rightToolbar.setReservePlaceAutoPopupIcon(false)
+        return SplitEditorToolbar(leftToolbar, rightToolbar)
     }
 
-    @Override
-    public void setState(@NotNull FileEditorState state) {
-        if (state instanceof MyFileEditorState) {
-            final MyFileEditorState compositeState = (MyFileEditorState)state;
-            if (compositeState.getFirstState() != null) {
-                myEditor.setState(compositeState.getFirstState());
+    override fun setState(state: FileEditorState) {
+        if (state is MyFileEditorState) {
+            val compositeState = state
+            if (compositeState.firstState != null) {
+                myEditor.setState(compositeState.firstState)
             }
-            if (compositeState.getSecondState() != null) {
-                myPreview.get(currentPreview).setState(compositeState.getSecondState());
+            if (compositeState.secondState != null) {
+                myPreview[currentPreview].setState(compositeState.secondState)
             }
-            if (compositeState.getSplitLayout() != null) {
-                myLayout = compositeState.getSplitLayout();
-                invalidateLayout();
+            if (compositeState.splitLayout != null) {
+                myLayout = compositeState.splitLayout
+                invalidateLayout()
             }
         }
     }
 
-    private void adjustEditorsVisibility() {
+    private fun adjustEditorsVisibility() {
         myEditor
-                .getComponent()
-                .setVisible(myLayout == Layout.SHOW_EDITOR || myLayout == Layout.SHOW_EDITOR_AND_PREVIEW);
-        myPreview
-                .get(currentPreview)
-                .getComponent()
-                .setVisible(myLayout == Layout.SHOW_PREVIEW || myLayout == Layout.SHOW_EDITOR_AND_PREVIEW);
+            .component.isVisible =
+            myLayout == Layout.SHOW_EDITOR || myLayout == Layout.SHOW_EDITOR_AND_PREVIEW
+        myPreview[currentPreview]
+            .component.isVisible =
+            myLayout == Layout.SHOW_PREVIEW || myLayout == Layout.SHOW_EDITOR_AND_PREVIEW
     }
 
-    private void invalidateLayout() {
-        adjustEditorsVisibility();
-        myToolbarWrapper.refresh();
-        myComponent.repaint();
-
-        final JComponent focusComponent = getPreferredFocusedComponent();
+    private fun invalidateLayout() {
+        adjustEditorsVisibility()
+        myToolbarWrapper.refresh()
+        myComponent.repaint()
+        val focusComponent = preferredFocusedComponent
         if (focusComponent != null) {
-            IdeFocusManager.findInstanceByComponent(focusComponent).requestFocus(focusComponent, true);
+            IdeFocusManager.findInstanceByComponent(focusComponent).requestFocus(focusComponent, true)
         }
     }
 
-    @NotNull
-    protected String getSplitterProportionKey() {
-
-        return "TextEditorWithPreview.SplitterProportionKey";
-    }
-
-    @Nullable
-    @Override
-    public JComponent getPreferredFocusedComponent() {
-        switch (myLayout) {
-            case SHOW_EDITOR_AND_PREVIEW:
-            case SHOW_EDITOR:
-                return myEditor.getPreferredFocusedComponent();
-            case SHOW_PREVIEW:
-                return myPreview.get(currentPreview).getPreferredFocusedComponent();
-            default:
-                throw new IllegalStateException(myLayout.myName);
+    override fun getPreferredFocusedComponent(): JComponent? {
+        return when (myLayout) {
+            Layout.SHOW_EDITOR_AND_PREVIEW, Layout.SHOW_EDITOR -> myEditor.preferredFocusedComponent
+            Layout.SHOW_PREVIEW -> myPreview[currentPreview].preferredFocusedComponent
         }
     }
 
-    @NotNull
-    @Override
-    public String getName() {
-        return myName;
+    override fun getName(): String {
+        return myName
     }
 
-    @NotNull
-    @Override
-    public FileEditorState getState(@NotNull FileEditorStateLevel level) {
-        return new MyFileEditorState(myLayout, myEditor.getState(level), myPreview.get(currentPreview).getState(level));
+    override fun getState(level: FileEditorStateLevel): FileEditorState {
+        return MyFileEditorState(myLayout, myEditor.getState(level), myPreview[currentPreview].getState(level))
     }
 
-    @Override
-    public void addPropertyChangeListener(@NotNull PropertyChangeListener listener) {
-        myEditor.addPropertyChangeListener(listener);
-        myPreview.get(currentPreview).addPropertyChangeListener(listener);
-
-        final DoublingEventListenerDelegate delegate = myListenersGenerator.addListenerAndGetDelegate(listener);
-        myEditor.addPropertyChangeListener(delegate);
-        myPreview.get(currentPreview).addPropertyChangeListener(delegate);
+    override fun addPropertyChangeListener(listener: PropertyChangeListener) {
+        myEditor.addPropertyChangeListener(listener)
+        myPreview[currentPreview].addPropertyChangeListener(listener)
+        val delegate = myListenersGenerator.addListenerAndGetDelegate(listener)
+        myEditor.addPropertyChangeListener(delegate)
+        myPreview[currentPreview].addPropertyChangeListener(delegate)
     }
 
-    @Override
-    public void removePropertyChangeListener(@NotNull PropertyChangeListener listener) {
-        myEditor.removePropertyChangeListener(listener);
-        myPreview.get(currentPreview).removePropertyChangeListener(listener);
-
-        final DoublingEventListenerDelegate delegate = myListenersGenerator.removeListenerAndGetDelegate(listener);
+    override fun removePropertyChangeListener(listener: PropertyChangeListener) {
+        myEditor.removePropertyChangeListener(listener)
+        myPreview[currentPreview].removePropertyChangeListener(listener)
+        val delegate = myListenersGenerator.removeListenerAndGetDelegate(listener)
         if (delegate != null) {
-            myEditor.removePropertyChangeListener(delegate);
-            myPreview.get(currentPreview).removePropertyChangeListener(delegate);
+            myEditor.removePropertyChangeListener(delegate)
+            myPreview[currentPreview].removePropertyChangeListener(delegate)
         }
     }
 
-    @NotNull
-    public TextEditor getTextEditor() {
-        return myEditor;
-    }
-
-    public Layout getLayout() {
-        return myLayout;
-    }
-
-    static class MyFileEditorState implements FileEditorState {
-        private final Layout mySplitLayout;
-        private final FileEditorState myFirstState;
-        private final FileEditorState mySecondState;
-
-        MyFileEditorState(Layout layout, FileEditorState firstState, FileEditorState secondState) {
-            mySplitLayout = layout;
-            myFirstState = firstState;
-            mySecondState = secondState;
-        }
-
-        @Nullable
-        public Layout getSplitLayout() {
-            return mySplitLayout;
-        }
-
-        @Nullable
-        public FileEditorState getFirstState() {
-            return myFirstState;
-        }
-
-        @Nullable
-        public FileEditorState getSecondState() {
-            return mySecondState;
-        }
-
-        @Override
-        public boolean canBeMergedWith(FileEditorState otherState, FileEditorStateLevel level) {
-            return otherState instanceof MyFileEditorState
-                    && (myFirstState == null || myFirstState.canBeMergedWith(((MyFileEditorState)otherState).myFirstState, level))
-                    && (mySecondState == null || mySecondState.canBeMergedWith(((MyFileEditorState)otherState).mySecondState, level));
+    class MyFileEditorState(
+        val splitLayout: Layout?,
+        val firstState: FileEditorState?,
+        val secondState: FileEditorState?
+    ) : FileEditorState {
+        override fun canBeMergedWith(otherState: FileEditorState, level: FileEditorStateLevel): Boolean {
+            return (otherState is MyFileEditorState
+                    && (firstState == null || firstState.canBeMergedWith(otherState.firstState!!, level))
+                    && (secondState == null || secondState.canBeMergedWith(otherState.secondState!!, level)))
         }
     }
 
-    @Override
-    public boolean isModified() {
-        return myEditor.isModified() || myPreview.get(currentPreview).isModified();
+    override fun isModified(): Boolean {
+        return myEditor.isModified || myPreview[currentPreview].isModified
     }
 
-    @Override
-    public boolean isValid() {
-        return myEditor.isValid() && myPreview.get(currentPreview).isValid();
+    override fun isValid(): Boolean {
+        return myEditor.isValid && myPreview[currentPreview].isValid
     }
 
-    private class DoublingEventListenerDelegate implements PropertyChangeListener {
-        @NotNull
-        private final PropertyChangeListener myDelegate;
-
-        private DoublingEventListenerDelegate(@NotNull PropertyChangeListener delegate) {
-            myDelegate = delegate;
-        }
-
-        @Override
-        public void propertyChange(PropertyChangeEvent evt) {
+    private inner class DoublingEventListenerDelegate(private val myDelegate: PropertyChangeListener) :
+        PropertyChangeListener {
+        override fun propertyChange(evt: PropertyChangeEvent) {
             myDelegate.propertyChange(
-                    new PropertyChangeEvent(this, evt.getPropertyName(), evt.getOldValue(), evt.getNewValue()));
+                PropertyChangeEvent(this, evt.propertyName, evt.oldValue, evt.newValue)
+            )
         }
     }
 
-    private class MyListenersMultimap {
-        private final Map<PropertyChangeListener, Pair<Integer, DoublingEventListenerDelegate>> myMap = new HashMap<>();
+    private inner class MyListenersMultimap {
+        private val myMap: MutableMap<PropertyChangeListener, Pair<Int, DoublingEventListenerDelegate>> = HashMap()
 
-        @NotNull
-        public DoublingEventListenerDelegate addListenerAndGetDelegate(@NotNull PropertyChangeListener listener) {
+        fun addListenerAndGetDelegate(listener: PropertyChangeListener): DoublingEventListenerDelegate {
             if (!myMap.containsKey(listener)) {
-                myMap.put(listener, Pair.create(1, new DoublingEventListenerDelegate(listener)));
+                myMap[listener] =
+                    Pair.create(
+                        1,
+                        DoublingEventListenerDelegate(listener)
+                    )
+            } else {
+                val oldPair = myMap[listener]!!
+                myMap[listener] =
+                    Pair.create(
+                        oldPair.getFirst() + 1,
+                        oldPair.getSecond()
+                    )
             }
-            else {
-                final Pair<Integer, DoublingEventListenerDelegate> oldPair = myMap.get(listener);
-                myMap.put(listener, Pair.create(oldPair.getFirst() + 1, oldPair.getSecond()));
-            }
-
-            return myMap.get(listener).getSecond();
+            return myMap[listener]!!.getSecond()
         }
 
-        @Nullable
-        public DoublingEventListenerDelegate removeListenerAndGetDelegate(@NotNull PropertyChangeListener listener) {
-            final Pair<Integer, DoublingEventListenerDelegate> oldPair = myMap.get(listener);
-            if (oldPair == null) {
-                return null;
-            }
-
+        fun removeListenerAndGetDelegate(listener: PropertyChangeListener): DoublingEventListenerDelegate? {
+            val oldPair = myMap[listener] ?: return null
             if (oldPair.getFirst() == 1) {
-                myMap.remove(listener);
+                myMap.remove(listener)
+            } else {
+                myMap[listener] =
+                    Pair.create(
+                        oldPair.getFirst() - 1,
+                        oldPair.getSecond()
+                    )
             }
-            else {
-                myMap.put(listener, Pair.create(oldPair.getFirst() - 1, oldPair.getSecond()));
-            }
-            return oldPair.getSecond();
+            return oldPair.getSecond()
         }
     }
 
-    private void createBuildActionGroup() {
-//        DumbService.getInstance(myEditor.getEditor().getProject()).runWhenSmart(() -> {
-            final String name = myEditor.getFile().getNameWithoutExtension();
-            final String truePath = myEditor.getFile().getPath();
-            final String path = myEditor.getEditor().getProject().getBasePath();
-            List<PsiMethod> testMethods = collectMethods(name, path, truePath);
-            System.out.println("testMethods were: " + testMethods.size());
-            TestRunLineMarkerProvider ex = new TestRunLineMarkerProvider();
-            for (PsiMethod testMethod : testMethods) {
-                System.out.println("Processing " + testMethod.getName());
-                PsiElement identifier = Arrays
-                        .stream(testMethod.getChildren())
-                        .filter(p -> p instanceof PsiIdentifier)
-                        .findFirst()
-                        .orElse(null);
-                if (identifier == null) {
-                    continue;
-                }
-                RunLineMarkerContributor.Info info = ex.getInfo(identifier);
-                if (info == null) {
-                    continue;
-                }
-                AnAction[] allActions = info.actions;
-                if (allActions.length == 0) {
-                    continue;
-                }
-                allActions = Arrays.copyOf(allActions, 2);
-
-                final List<AnAction> group = Arrays.stream(allActions).map(it -> new AnAction() {
-                    @Override
-                    public void actionPerformed(@NotNull AnActionEvent e) {
-                        final Map<String, Object> dataId2data = new HashMap<>();
-                        final Location<PsiElement> newLocation = PsiLocation.fromPsiElement(identifier);
-                        dataId2data.put(ConfigurationContext.SHARED_CONTEXT.toString(), ConfigurationContext.createEmptyContextForLocation(newLocation));
-                        dataId2data.put(Location.DATA_KEY.getName(), newLocation);
-                        final DataContext dataContext = SimpleDataContext.getSimpleContext(
+    private fun createBuildActionGroup() {
+        val file = myEditor.file ?: return
+        val name = file.nameWithoutExtension
+        val truePath = file.path
+        val path = myEditor.editor.project!!.basePath
+        val testMethods = collectMethods(name, path!!, truePath)
+        val ex = TestRunLineMarkerProvider()
+        for (testMethod in testMethods) {
+            val identifier = Arrays
+                .stream(testMethod.children)
+                .filter { p: PsiElement? -> p is PsiIdentifier }
+                .findFirst()
+                .orElse(null) ?: continue
+            val info = ex.getInfo(identifier) ?: continue
+            var allActions = info.actions
+            if (allActions.isEmpty()) {
+                continue
+            }
+            allActions = Arrays.copyOf(allActions, 2)
+            val group: List<AnAction> = Arrays.stream(allActions).map {
+                object : AnAction() {
+                    override fun actionPerformed(e: AnActionEvent) {
+                        val dataId2data: MutableMap<String, Any> = HashMap()
+                        val newLocation = PsiLocation.fromPsiElement(identifier)
+                        dataId2data[ConfigurationContext.SHARED_CONTEXT.toString()] =
+                            ConfigurationContext.createEmptyContextForLocation(newLocation)
+                        dataId2data[Location.DATA_KEY.name] = newLocation
+                        val dataContext = SimpleDataContext.getSimpleContext(
                             dataId2data,
-                            e.getDataContext()
-                        );
-                        final AnActionEvent newEvent = new AnActionEvent(
-                            e.getInputEvent(),
+                            e.dataContext
+                        )
+                        val newEvent = AnActionEvent(
+                            e.inputEvent,
                             dataContext,
-                            e.getPlace(),
-                            e.getPresentation(),
-                            e.getActionManager(),
-                            e.getModifiers()
-                        );
-                        it.actionPerformed(newEvent);
+                            e.place,
+                            e.presentation,
+                            e.actionManager,
+                            e.modifiers
+                        )
+                        it.actionPerformed(newEvent)
                     }
 
-                    @Override
-                    public void update(@NotNull AnActionEvent e) {
-                        it.update(e);
-                        e.getPresentation().setEnabledAndVisible(true);
+                    override fun update(e: AnActionEvent) {
+                        it.update(e)
+                        e.presentation.isEnabledAndVisible = true
                     }
-                }).collect(Collectors.toList());
-                AnAction first = group.get(0);
-                AnAction newAction1 = new AnAction() {
-                    @Override
-                    public void actionPerformed(@NotNull AnActionEvent e) {
-                        first.actionPerformed(e);
-                    }
-                    @Override
-                    public void update(@NotNull AnActionEvent e) {
-                        first.update(e);
-                        e.getPresentation().setIcon(AllIcons.Actions.Execute);
-                    }
-                };
-                AnAction second = group.get(1);
-                AnAction newAction2 = new AnAction() {
-                    @Override
-                    public void actionPerformed(@NotNull AnActionEvent e) {
-                        second.actionPerformed(e);
-                    }
-                    @Override
-                    public void update(@NotNull AnActionEvent e) {
-                        second.update(e);
-                        e.getPresentation().setIcon(AllIcons.Actions.StartDebugger);
-                    }
-                };
-                List<AnAction> finalActions = new ArrayList<>();
-                finalActions.add(newAction1);
-                finalActions.add(newAction2);
-                debugAndRun.add(finalActions);
-                PsiClass firstContainingClass = testMethod.getContainingClass();
-                while (firstContainingClass != firstContainingClass.getContainingClass() && firstContainingClass.getContainingClass() != null) {
-                    firstContainingClass = firstContainingClass.getContainingClass();
                 }
-                methodsClassNames.add(testMethod.getContainingClass().getName());
-//                ((DefaultActionGroup) actionGroup).add(new DefaultActionGroup(allActions));
-//                break;
+            }.collect(Collectors.toList())
+            val first = group[0]
+            val newAction1: AnAction = object : AnAction() {
+                override fun actionPerformed(e: AnActionEvent) {
+                    first.actionPerformed(e)
+                }
+
+                override fun update(e: AnActionEvent) {
+                    first.update(e)
+                    e.presentation.icon = AllIcons.Actions.Execute
+                }
             }
-//            if (myComponent != null) {
-//                myComponent.revalidate();
-//                myComponent.repaint();
-//            }
-//        });
-    }
-
-    @Nullable
-    protected ActionToolbar createToolbar() {
-//        actionGroup = createPreviewActionGroup();
-        createBuildActionGroup();
-        ActionToolbar actionToolbar = ActionManager
-                .getInstance()
-                .createActionToolbar(TEXT_EDITOR_WITH_PREVIEW,
-                        new DefaultActionGroup(createPreviewActionGroup(), new GeneratedTestComboBox(), currentGroup),
-                        true);
-        return actionToolbar;
-    }
-
-    @NotNull
-    protected ActionGroup createPreviewActionGroup() {
-        return new DefaultActionGroup(new MyComboboxAction());
-    }
-
-    private class GeneratedTestComboBox extends ComboBoxAction {
-
-        @Override
-        protected @NotNull DefaultActionGroup createPopupActionGroup(JComponent button) {
-            return new DefaultActionGroup();
-        }
-
-        @NotNull
-        @Override
-        public JComponent createCustomComponent(@NotNull Presentation presentation, @NotNull String place) {
-            final ComboBox box = new ComboBox(new DefaultComboBoxModel(debugAndRun.toArray()));
-            box.addActionListener((event) -> {
-                changeDebugAndRun((List<AnAction>) box.getItem());
-            });
-            box.setRenderer(new DefaultListCellRenderer() {
-                @Override
-                public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                    final Component originalComponent = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                    value = (List<AnAction>) value;
-                    int order = debugAndRun.indexOf(value);
-                    setText(methodsClassNames.get(order));
-                    return originalComponent;
+            val second = group[1]
+            val newAction2: AnAction = object : AnAction() {
+                override fun actionPerformed(e: AnActionEvent) {
+                    second.actionPerformed(e)
                 }
-            });
-            box.putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true);
-            final JPanel panel = new JPanel();
-            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-            final JBLabel label = new JBLabel("Tests: ");
-            panel.add(label);
-            panel.add(box);
-            return panel;
+
+                override fun update(e: AnActionEvent) {
+                    second.update(e)
+                    e.presentation.icon = AllIcons.Actions.StartDebugger
+                }
+            }
+            val finalActions: MutableList<AnAction> = ArrayList()
+            finalActions.add(newAction1)
+            finalActions.add(newAction2)
+            debugAndRun.add(finalActions)
+            var firstContainingClass = testMethod.containingClass
+            while (firstContainingClass !== firstContainingClass!!.containingClass && firstContainingClass!!.containingClass != null) {
+                firstContainingClass = firstContainingClass.containingClass
+            }
+            methodsClassNames.add(testMethod.containingClass!!.name!!)
         }
     }
-    private class MyComboboxAction extends ComboBoxAction {
 
-        @Override
-        protected @NotNull DefaultActionGroup createPopupActionGroup(JComponent button) {
-            return new DefaultActionGroup();
+    private fun createToolbar(): ActionToolbar {
+        createBuildActionGroup()
+        return ActionManager
+            .getInstance()
+            .createActionToolbar(
+                ActionPlaces.TEXT_EDITOR_WITH_PREVIEW,
+                DefaultActionGroup(createPreviewActionGroup(), GeneratedTestComboBox(), currentGroup),
+                true
+            )
+    }
+
+    private fun createPreviewActionGroup(): ActionGroup {
+        return DefaultActionGroup(MyComboboxAction())
+    }
+
+    private inner class GeneratedTestComboBox : ComboBoxAction() {
+        override fun createPopupActionGroup(button: JComponent): DefaultActionGroup {
+            return DefaultActionGroup()
         }
 
-        @NotNull
-        @Override
-        public JComponent createCustomComponent(@NotNull Presentation presentation, @NotNull String place) {
-            final ComboBox box = new ComboBox(new DefaultComboBoxModel(myPreview.toArray()));
-            box.addActionListener((event) -> {
-                changeEditor((FileEditor) box.getItem());
-            });
-            box.setRenderer(new DefaultListCellRenderer() {
-                @Override
-                public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                    final Component originalComponent = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                    if (value instanceof FileEditor) {
-                        setText(Objects.requireNonNull((FileEditor) value).getFile().getName());
+        override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
+            val box: ComboBox<*> = ComboBox(DefaultComboBoxModel<Any?>(debugAndRun.toTypedArray()))
+            box.addActionListener { event: ActionEvent? -> changeDebugAndRun(box.item as List<AnAction>) }
+            box.renderer = object : DefaultListCellRenderer() {
+                override fun getListCellRendererComponent(
+                    list: JList<*>?,
+                    value: Any,
+                    index: Int,
+                    isSelected: Boolean,
+                    cellHasFocus: Boolean
+                ): Component {
+                    var value = value
+                    val originalComponent =
+                        super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
+                    value = value as List<AnAction?>
+                    val order = debugAndRun.indexOf(value)
+                    text = methodsClassNames[order]
+                    return originalComponent
+                }
+            }
+            box.putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true)
+            val panel = JPanel()
+            panel.layout = BoxLayout(panel, BoxLayout.X_AXIS)
+            val label = JBLabel("Tests: ")
+            panel.add(label)
+            panel.add(box)
+            return panel
+        }
+    }
+
+    private inner class MyComboboxAction : ComboBoxAction() {
+        override fun createPopupActionGroup(button: JComponent): DefaultActionGroup {
+            return DefaultActionGroup()
+        }
+
+        override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
+            val box: ComboBox<*> = ComboBox(DefaultComboBoxModel<Any?>(myPreview.toTypedArray()))
+            box.addActionListener { event: ActionEvent? -> changeEditor(box.item as FileEditor) }
+            box.renderer = object : DefaultListCellRenderer() {
+                override fun getListCellRendererComponent(
+                    list: JList<*>?,
+                    value: Any,
+                    index: Int,
+                    isSelected: Boolean,
+                    cellHasFocus: Boolean
+                ): Component {
+                    val originalComponent =
+                        super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
+                    text = if (value is FileEditor) {
+                        Objects.requireNonNull(value)!!
+                            .file!!.name
                     } else {
-                        setText("#########");
+                        "#########"
                     }
-                    return originalComponent;
+                    return originalComponent
                 }
-            });
-            box.putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true);
-            final JPanel panel = new JPanel();
-            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-            final JBLabel label = new JBLabel("dump files: ");
-//            label.setFont(JBUI.Fonts.smallFont());
-            panel.add(label);
-            panel.add(box);
-            return panel;
+            }
+            box.putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true)
+            val panel = JPanel()
+            panel.layout = BoxLayout(panel, BoxLayout.X_AXIS)
+            val label = JBLabel("dump files: ")
+            //            label.setFont(JBUI.Fonts.smallFont());
+            panel.add(label)
+            panel.add(box)
+            return panel
         }
     }
 
-    @NotNull
-    private ActionToolbar createRightToolbar() {
-        final ActionGroup viewActions = createViewActionGroup();
-        final ActionGroup group = createRightToolbarActionGroup();
-        final ActionGroup rightToolbarActions = group == null
-                ? viewActions
-                : new DefaultActionGroup(group, Separator.create(), viewActions);
-        return ActionManager.getInstance().createActionToolbar(TEXT_EDITOR_WITH_PREVIEW, rightToolbarActions, true);
+    private fun createRightToolbar(): ActionToolbar {
+        val viewActions = createViewActionGroup()
+        val group = createRightToolbarActionGroup()
+        val rightToolbarActions =
+            if (group == null) viewActions else DefaultActionGroup(group, Separator.create(), viewActions)
+        return ActionManager.getInstance()
+            .createActionToolbar(ActionPlaces.TEXT_EDITOR_WITH_PREVIEW, rightToolbarActions, true)
     }
 
-    @NotNull
-    protected ActionGroup createViewActionGroup() {
-        return new DefaultActionGroup(
-                getShowEditorAction(),
-                getShowEditorAndPreviewAction(),
-                getShowPreviewAction()
-        );
+    private fun createViewActionGroup(): ActionGroup {
+        return DefaultActionGroup(
+            showEditorAction,
+            showEditorAndPreviewAction,
+            showPreviewAction
+        )
     }
 
-    @Nullable
-    protected ActionGroup createRightToolbarActionGroup() {
-        return null;
+    private fun createRightToolbarActionGroup(): ActionGroup? {
+        return null
     }
 
-    @NotNull
-    protected ToggleAction getShowEditorAction() {
-        return new ChangeViewModeAction(Layout.SHOW_EDITOR);
-    }
+    private val showEditorAction: ToggleAction
+        get() = ChangeViewModeAction(Layout.SHOW_EDITOR)
+    private val showPreviewAction: ToggleAction
+        get() = ChangeViewModeAction(Layout.SHOW_PREVIEW)
+    private val showEditorAndPreviewAction: ToggleAction
+        get() = ChangeViewModeAction(Layout.SHOW_EDITOR_AND_PREVIEW)
 
-    @NotNull
-    protected ToggleAction getShowPreviewAction() {
-        return new ChangeViewModeAction(Layout.SHOW_PREVIEW);
-    }
-
-    @NotNull
-    protected ToggleAction getShowEditorAndPreviewAction() {
-        return new ChangeViewModeAction(Layout.SHOW_EDITOR_AND_PREVIEW);
-    }
-
-    public enum Layout {
+    enum class Layout(val presentableName: String, val icon: Icon) {
         SHOW_EDITOR("Editor only", AllIcons.General.LayoutEditorOnly),
         SHOW_PREVIEW("Preview only", AllIcons.General.LayoutPreviewOnly),
         SHOW_EDITOR_AND_PREVIEW("Editor and Preview", AllIcons.General.LayoutEditorPreview);
 
-        private final String myName;
-        private final Icon myIcon;
-
-        Layout(String name, Icon icon) {
-            myName = name;
-            myIcon = icon;
-        }
-
-        public static Layout fromName(String name, Layout defaultValue) {
-            for (Layout layout : Layout.values()) {
-                if (layout.myName.equals(name)) {
-                    return layout;
+        companion object {
+            fun fromName(name: String?, defaultValue: Layout): Layout {
+                for (layout in values()) {
+                    if (layout.presentableName == name) {
+                        return layout
+                    }
                 }
+                return defaultValue
             }
-            return defaultValue;
-        }
-
-        public String getName() {
-            return myName;
-        }
-
-        public Icon getIcon() {
-            return myIcon;
         }
     }
 
-    private class ChangeViewModeAction extends ToggleAction implements DumbAware {
-        private final Layout myActionLayout;
-
-        ChangeViewModeAction(Layout layout) {
-            super(layout.getName(), layout.getName(), layout.getIcon());
-            myActionLayout = layout;
+    private inner class ChangeViewModeAction(private val myActionLayout: Layout) : ToggleAction(
+        myActionLayout.presentableName,
+        myActionLayout.presentableName,
+        myActionLayout.icon
+    ), DumbAware {
+        override fun isSelected(e: AnActionEvent): Boolean {
+            return myLayout == myActionLayout
         }
 
-        @Override
-        public boolean isSelected(@NotNull AnActionEvent e) {
-            return myLayout == myActionLayout;
-        }
-
-        @Override
-        public void setSelected(@NotNull AnActionEvent e, boolean state) {
+        override fun setSelected(e: AnActionEvent, state: Boolean) {
             if (state) {
-                myLayout = myActionLayout;
-                PropertiesComponent.getInstance().setValue(getLayoutPropertyName(), myLayout.myName, myDefaultLayout.myName);
-                adjustEditorsVisibility();
+                myLayout = myActionLayout
+                PropertiesComponent.getInstance()
+                    .setValue(layoutPropertyName, myLayout.presentableName, myDefaultLayout.presentableName)
+                adjustEditorsVisibility()
             }
         }
     }
 
-    @NotNull
-    private String getLayoutPropertyName() {
-        return myName + "Layout";
+    private val layoutPropertyName: String
+        get() = myName + "Layout"
+
+    override fun getFile(): VirtualFile? {
+        return myEditor.file
     }
 
-    @Override
-    public @Nullable
-    VirtualFile getFile() {
-        return getTextEditor().getFile();
+    override fun getEditor(): Editor {
+        return myEditor.editor
     }
 
-    @Override
-    public @NotNull
-    Editor getEditor() {
-        return getTextEditor().getEditor();
+    override fun canNavigateTo(navigatable: Navigatable): Boolean {
+        return myEditor.canNavigateTo(navigatable)
     }
 
-    @Override
-    public boolean canNavigateTo(@NotNull Navigatable navigatable) {
-        return getTextEditor().canNavigateTo(navigatable);
-    }
-
-    @Override
-    public void navigateTo(@NotNull Navigatable navigatable) {
-        getTextEditor().navigateTo(navigatable);
+    override fun navigateTo(navigatable: Navigatable) {
+        myEditor.navigateTo(navigatable)
     }
 }
