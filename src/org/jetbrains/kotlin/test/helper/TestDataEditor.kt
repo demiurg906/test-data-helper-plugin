@@ -27,6 +27,7 @@ import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
+import org.jetbrains.kotlin.test.helper.actions.ChooseAdditionalFileAction
 import java.awt.Component
 import java.beans.PropertyChangeEvent
 import java.beans.PropertyChangeListener
@@ -36,12 +37,40 @@ import javax.swing.*
 
 class TestDataEditor(
     private val baseEditor: TextEditor,
-    private val splitEditors: List<FileEditor>,
+    splitEditors: List<FileEditor>,
     private val name: String = "Test Data"
 ) : UserDataHolderBase(), TextEditor {
-    private var currentPreview: Int = PropertiesComponent.getInstance().getValue(lastUsedPreviewPropertyName)?.toIntOrNull() ?: 0
+
+    class State(
+        val baseEditor: TextEditor,
+        val splitEditors: List<FileEditor>,
+        currentPreview: Int
+    ) {
+        var currentPreview: Int = currentPreview.takeIf { it in splitEditors.indices } ?: 0
+            private set
+
+        val currentPreviewEditor: FileEditor
+            get() = splitEditors[currentPreview]
+
+        val baseFileIsChosen: Boolean
+            get() = baseEditor == splitEditors[currentPreview]
+
+        fun chooseNewEditor(editor: FileEditor) {
+            if (editor !in splitEditors) {
+                // TODO: log
+                return
+            }
+            currentPreview = splitEditors.indexOf(editor)
+        }
+    }
 
     // ------------------------------------- components -------------------------------------
+
+    private val state: State = State(
+        baseEditor,
+        splitEditors,
+        PropertiesComponent.getInstance().getValue(lastUsedPreviewPropertyName)?.toIntOrNull() ?: 0
+    )
 
     private lateinit var editorViewMode: EditorViewMode
 
@@ -49,7 +78,7 @@ class TestDataEditor(
         JBSplitter(false, 0.5f, 0.15f, 0.85f).apply {
             splitterProportionKey = splitterProportionKey
             firstComponent = baseEditor.component
-            secondComponent = splitEditors[currentPreview].component
+            secondComponent = state.currentPreviewEditor.component
             dividerWidth = 3
         }
     }
@@ -88,63 +117,26 @@ class TestDataEditor(
     }
 
     private fun createPreviewActionGroup(): ActionGroup {
-        return DefaultActionGroup(ChooseAdditionalFileAction())
+        return DefaultActionGroup(ChooseAdditionalFileAction(this, state))
     }
 
-    private fun updatePreviewEditor() {
-        val viewMode = if (splitEditors[currentPreview].file == baseEditor.file) {
+    fun updatePreviewEditor() {
+        val viewMode = if (state.baseFileIsChosen) {
             EditorViewMode.OnlyBaseEditor
         } else {
             EditorViewMode.BaseAndAdditionalEditor
         }
-        splitter.secondComponent = splitEditors[currentPreview].component
+        splitter.secondComponent = state.currentPreviewEditor.component
         editorViewMode = viewMode
         PropertiesComponent.getInstance()
             .setValue(
                 lastUsedPreviewPropertyName,
-                currentPreview.toString()
+                state.currentPreview.toString()
             )
         baseEditor.component.isVisible = true
-        splitEditors[currentPreview].component.isVisible = editorViewMode == EditorViewMode.BaseAndAdditionalEditor
+        state.currentPreviewEditor.component.isVisible = editorViewMode == EditorViewMode.BaseAndAdditionalEditor
     }
 
-    private inner class ChooseAdditionalFileAction : ComboBoxAction() {
-        override fun createPopupActionGroup(button: JComponent): DefaultActionGroup {
-            return DefaultActionGroup()
-        }
-
-        override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
-            val box = ComboBox(DefaultComboBoxModel(splitEditors.toTypedArray())).apply {
-                item = splitEditors[currentPreview]
-                addActionListener {
-                    currentPreview = splitEditors.indexOf(item)
-                    updatePreviewEditor()
-                }
-                renderer = object : DefaultListCellRenderer() {
-                    override fun getListCellRendererComponent(
-                        list: JList<*>?,
-                        value: Any,
-                        index: Int,
-                        isSelected: Boolean,
-                        cellHasFocus: Boolean
-                    ): Component {
-                        val originalComponent = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
-                        text = (value as? FileEditor)?.file?.name ?: "## no name provided ##"
-                        return originalComponent
-                    }
-                }
-                putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true)
-            }
-
-            val label = JBLabel("Available files: ")
-
-            return JPanel().apply {
-                layout = BoxLayout(this, BoxLayout.X_AXIS)
-                add(label)
-                add(box)
-            }
-        }
-    }
 
     private fun createTestRunToolbar(): ActionToolbar {
         createBuildActionGroup()
@@ -363,7 +355,7 @@ class TestDataEditor(
             baseEditor.setState(state.firstState)
         }
         if (state.secondState != null) {
-            splitEditors[currentPreview].setState(state.secondState)
+            this@TestDataEditor.state.currentPreviewEditor.setState(state.secondState)
         }
         if (state.splitLayout != null) {
             editorViewMode = state.splitLayout
@@ -383,19 +375,21 @@ class TestDataEditor(
 
     override fun addPropertyChangeListener(listener: PropertyChangeListener) {
         baseEditor.addPropertyChangeListener(listener)
-        splitEditors[currentPreview].addPropertyChangeListener(listener)
+        val previewEditor = state.currentPreviewEditor
+        previewEditor.addPropertyChangeListener(listener)
         val delegate = listenersGenerator.addListenerAndGetDelegate(listener)
         baseEditor.addPropertyChangeListener(delegate)
-        splitEditors[currentPreview].addPropertyChangeListener(delegate)
+        previewEditor.addPropertyChangeListener(delegate)
     }
 
     override fun removePropertyChangeListener(listener: PropertyChangeListener) {
         baseEditor.removePropertyChangeListener(listener)
-        splitEditors[currentPreview].removePropertyChangeListener(listener)
+        val previewEditor = state.currentPreviewEditor
+        previewEditor.removePropertyChangeListener(listener)
         val delegate = listenersGenerator.removeListenerAndGetDelegate(listener)
         if (delegate != null) {
             baseEditor.removePropertyChangeListener(delegate)
-            splitEditors[currentPreview].removePropertyChangeListener(delegate)
+            previewEditor.removePropertyChangeListener(delegate)
         }
     }
 
@@ -439,17 +433,17 @@ class TestDataEditor(
 
     override fun dispose() {
         Disposer.dispose(baseEditor)
-        splitEditors.forEach { it.dispose() }
+        state.splitEditors.forEach { it.dispose() }
     }
 
     override fun selectNotify() {
         baseEditor.selectNotify()
-        splitEditors.forEach { it.selectNotify() }
+        state.splitEditors.forEach { it.selectNotify() }
     }
 
     override fun deselectNotify() {
         baseEditor.deselectNotify()
-        splitEditors.forEach { it.deselectNotify() }
+        state.splitEditors.forEach { it.deselectNotify() }
     }
 
     override fun getPreferredFocusedComponent(): JComponent? {
@@ -461,15 +455,15 @@ class TestDataEditor(
     }
 
     override fun getState(level: FileEditorStateLevel): FileEditorState {
-        return MyFileEditorState(editorViewMode, baseEditor.getState(level), splitEditors[currentPreview].getState(level))
+        return MyFileEditorState(editorViewMode, baseEditor.getState(level), state.currentPreviewEditor.getState(level))
     }
 
     override fun isModified(): Boolean {
-        return baseEditor.isModified || splitEditors.any { it.isModified }
+        return baseEditor.isModified || state.splitEditors.any { it.isModified }
     }
 
     override fun isValid(): Boolean {
-        return baseEditor.isValid && splitEditors.all { it.isValid }
+        return baseEditor.isValid && state.splitEditors.all { it.isValid }
     }
 
     private val lastUsedPreviewPropertyName: String
