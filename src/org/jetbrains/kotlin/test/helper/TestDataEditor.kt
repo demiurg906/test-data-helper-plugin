@@ -3,7 +3,6 @@ package org.jetbrains.kotlin.test.helper
 import com.intellij.codeHighlighting.BackgroundEditorHighlighter
 import com.intellij.execution.Location
 import com.intellij.execution.PsiLocation
-import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.icons.AllIcons
 import com.intellij.ide.structureView.StructureViewBuilder
 import com.intellij.ide.ui.laf.darcula.DarculaUIUtil
@@ -18,13 +17,13 @@ import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Pair
 import com.intellij.openapi.util.UserDataHolderBase
-import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.pom.Navigatable
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiIdentifier
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.testIntegration.TestRunLineMarkerProvider
@@ -32,7 +31,6 @@ import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import java.awt.Component
-import java.awt.event.ActionEvent
 import java.beans.PropertyChangeEvent
 import java.beans.PropertyChangeListener
 import java.util.*
@@ -135,20 +133,8 @@ class TestDataEditor(
             .collect(Collectors.toList())
         val findingMethods: MutableList<PsiMethod> = ArrayList()
         for (method in methods) {
-            val classPath = method.containingClass
-                ?.getAnnotation("org.jetbrains.kotlin.test.TestMetadata")
-                ?.getParameterList()
-                ?.attributes
-                ?.get(0)
-                ?.literalValue
-                ?: TODO()
-            val methodPathPart = method
-                ?.getAnnotation("org.jetbrains.kotlin.test.TestMetadata")
-                ?.getParameterList()
-                ?.attributes
-                ?.get(0)
-                ?.literalValue
-                ?: TODO()
+            val classPath = method.containingClass?.extractTestMetadataValue() ?: continue
+            val methodPathPart = method?.extractTestMetadataValue() ?: continue
             val methodPath = "$path/$classPath/$methodPathPart"
             println("$methodPath | $truePath")
             if (methodPath == truePath) {
@@ -158,30 +144,18 @@ class TestDataEditor(
         return findingMethods
     }
 
-    private fun collectTestMethods(baseName: String): List<String> {
-        val project = editor.project
-        val cache = PsiShortNamesCache.getInstance(project)
-        val targetName = baseName + "Generated"
-        val targetMethodName = "test" + Character.toUpperCase(baseName[0]) + baseName.substring(1)
-        val classes = cache.getClassesByName(targetName, GlobalSearchScope.allScope(project!!))
-        val psiMethods = cache.getMethodsByName(targetName, GlobalSearchScope.allScope(project))
-        for (cls in classes) {
-            val methods = Arrays.stream(cls.allMethods)
-                .filter { method: PsiMethod -> StringUtil.startsWith(method.name, "test") }
-                .collect(Collectors.toList())
-            for (method in methods) {
-                //   System.out.println(method.getName());
-            }
-        }
-        return emptyList()
+    private fun PsiModifierListOwner?.extractTestMetadataValue(): String? {
+        return this?.getAnnotation("org.jetbrains.kotlin.test.TestMetadata")
+            ?.parameterList
+            ?.attributes
+            ?.get(0)
+            ?.literalValue
     }
 
     private fun createMarkdownToolbarWrapper(targetComponentForActions: JComponent): SplitEditorToolbar {
         val leftToolbar = createToolbar()
-        if (leftToolbar != null) {
-            leftToolbar.setTargetComponent(targetComponentForActions)
-            leftToolbar.setReservePlaceAutoPopupIcon(false)
-        }
+        leftToolbar.setTargetComponent(targetComponentForActions)
+        leftToolbar.setReservePlaceAutoPopupIcon(false)
         val rightToolbar = createRightToolbar()
         rightToolbar.setTargetComponent(targetComponentForActions)
         rightToolbar.setReservePlaceAutoPopupIcon(false)
@@ -189,18 +163,16 @@ class TestDataEditor(
     }
 
     override fun setState(state: FileEditorState) {
-        if (state is MyFileEditorState) {
-            val compositeState = state
-            if (compositeState.firstState != null) {
-                baseEditor.setState(compositeState.firstState)
-            }
-            if (compositeState.secondState != null) {
-                splitEditors[currentPreview].setState(compositeState.secondState)
-            }
-            if (compositeState.splitLayout != null) {
-                myLayout = compositeState.splitLayout
-                invalidateLayout()
-            }
+        if (state !is MyFileEditorState) return
+        if (state.firstState != null) {
+            baseEditor.setState(state.firstState)
+        }
+        if (state.secondState != null) {
+            splitEditors[currentPreview].setState(state.secondState)
+        }
+        if (state.splitLayout != null) {
+            myLayout = state.splitLayout
+            invalidateLayout()
         }
     }
 
@@ -343,15 +315,12 @@ class TestDataEditor(
             val group: List<AnAction> = Arrays.stream(allActions).map {
                 object : AnAction() {
                     override fun actionPerformed(e: AnActionEvent) {
-                        val dataId2data: MutableMap<String, Any> = HashMap()
-                        val newLocation = PsiLocation.fromPsiElement(identifier)
-                        dataId2data[ConfigurationContext.SHARED_CONTEXT.toString()] =
-                            ConfigurationContext.createEmptyContextForLocation(newLocation)
-                        dataId2data[Location.DATA_KEY.name] = newLocation
-                        val dataContext = SimpleDataContext.getSimpleContext(
-                            dataId2data,
-                            e.dataContext
-                        )
+                        val dataContext = SimpleDataContext.builder().apply {
+                            val newLocation = PsiLocation.fromPsiElement(identifier)
+                            setParent(e.dataContext)
+                            add(Location.DATA_KEY, newLocation)
+                        }.build()
+
                         val newEvent = AnActionEvent(
                             e.inputEvent,
                             dataContext,
@@ -424,8 +393,8 @@ class TestDataEditor(
         }
 
         override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
-            val box: ComboBox<*> = ComboBox(DefaultComboBoxModel<Any?>(debugAndRun.toTypedArray()))
-            box.addActionListener { event: ActionEvent? -> changeDebugAndRun(box.item as List<AnAction>) }
+            val box = ComboBox(DefaultComboBoxModel(debugAndRun.toTypedArray()))
+            box.addActionListener { changeDebugAndRun(box.item) }
             box.renderer = object : DefaultListCellRenderer() {
                 override fun getListCellRendererComponent(
                     list: JList<*>?,
@@ -434,10 +403,7 @@ class TestDataEditor(
                     isSelected: Boolean,
                     cellHasFocus: Boolean
                 ): Component {
-                    var value = value
-                    val originalComponent =
-                        super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
-                    value = value as List<AnAction?>
+                    val originalComponent = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
                     val order = debugAndRun.indexOf(value)
                     text = methodsClassNames[order]
                     return originalComponent
@@ -460,7 +426,7 @@ class TestDataEditor(
 
         override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
             val box: ComboBox<*> = ComboBox(DefaultComboBoxModel<Any?>(splitEditors.toTypedArray()))
-            box.addActionListener { event: ActionEvent? -> changeEditor(box.item as FileEditor) }
+            box.addActionListener { changeEditor(box.item as FileEditor) }
             box.renderer = object : DefaultListCellRenderer() {
                 override fun getListCellRendererComponent(
                     list: JList<*>?,
@@ -483,7 +449,7 @@ class TestDataEditor(
             box.putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true)
             val panel = JPanel()
             panel.layout = BoxLayout(panel, BoxLayout.X_AXIS)
-            val label = JBLabel("dump files: ")
+            val label = JBLabel("Dump files: ")
             //            label.setFont(JBUI.Fonts.smallFont());
             panel.add(label)
             panel.add(box)
