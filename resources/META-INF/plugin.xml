@@ -10,9 +10,9 @@
     <depends>com.intellij.java</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <fileEditorProvider implementation="org.jetbrains.plugins.template.ui.editor.MyKotlinFileEditorProvider"/>
+        <fileEditorProvider implementation="org.jetbrains.kotlin.test.helper.KotlinTestDataFileEditorProvider"/>
         <applicationConfigurable bundle="messages.MyBundle"
-                                 instance="org.jetbrains.plugins.template.ui.editor.MyAwesomeConfigurable"/>
-        <applicationService serviceImplementation="org.jetbrains.plugins.template.ui.editor.MyAwesomeSettings"/>
+                                 instance="org.jetbrains.kotlin.test.helper.PluginSettings"/>
+        <applicationService serviceImplementation="org.jetbrains.kotlin.test.helper.TestDataPluginSettings"/>
     </extensions>
 </idea-plugin>

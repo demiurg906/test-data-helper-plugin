@@ -1,17 +1,15 @@
-package org.jetbrains.plugins.template.ui.editor
+package org.jetbrains.kotlin.test.helper
 
 import com.intellij.ide.ui.fullRow
-import com.intellij.openapi.components.State
-import com.intellij.openapi.components.Storage
 import com.intellij.openapi.observable.properties.GraphPropertyImpl.Companion.graphProperty
 import com.intellij.openapi.observable.properties.PropertyGraph
 import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.ui.layout.panel
 
-class MyAwesomeConfigurable: BoundConfigurable("My Awesome Plugin Settings", "Tools.MyAwesomePluginSettings") {
+class PluginSettings: BoundConfigurable("Kotlin TestData Plugin Settings", "Tools.KotlinTestDataPluginSettings") {
     private val settings
-        get() = MyAwesomeSettings.getInstance()
+        get() = TestDataPluginSettings.getInstance()
 
     private val propertyGraph = PropertyGraph()
     private val pathsProperty = propertyGraph.graphProperty { settings.paths ?: "" }

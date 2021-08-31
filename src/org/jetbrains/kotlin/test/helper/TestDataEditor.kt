@@ -1,4 +1,4 @@
-package org.jetbrains.plugins.template.ui.editor
+package org.jetbrains.kotlin.test.helper
 
 import com.intellij.codeHighlighting.BackgroundEditorHighlighter
 import com.intellij.execution.Location
@@ -38,35 +38,16 @@ import java.beans.PropertyChangeListener
 import java.util.*
 import java.util.stream.Collectors
 import javax.swing.*
-import kotlin.properties.ReadWriteProperty
-import kotlin.reflect.KProperty
 
-
-fun <T : Any> lazyVar(init: () -> T) : ReadWriteProperty<Any?, T> {
-    return object : ReadWriteProperty<Any?, T> {
-        private var value: T? = null
-
-        override fun getValue(thisRef: Any?, property: KProperty<*>): T {
-            if (value == null) {
-                value = init()
-            }
-            return value!!
-        }
-
-        override fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
-            this.value = value
-        }
-    }
-}
-
-class CustomEditor(
-    val myEditor: TextEditor,
-    protected val myPreview: List<FileEditor>,
-    private val myName: String,
-    private val myDefaultLayout: Layout,
-    private var currentPreview: Int
+class TestDataEditor(
+    private val baseEditor: TextEditor,
+    private val splitEditors: List<FileEditor>,
+    private var currentPreview: Int,
+    private val name: String = "TextEditorWithPreview",
+    private val myDefaultLayout: Layout = Layout.SHOW_EDITOR_AND_PREVIEW
 ) : UserDataHolderBase(), TextEditor {
-    private val myListenersGenerator: MyListenersMultimap = MyListenersMultimap()
+    private val listenersGenerator: ListenersMultimap = ListenersMultimap()
+
     var myLayout: Layout by lazyVar {
         val lastUsed = PropertiesComponent.getInstance().getValue(layoutPropertyName)
         Layout.fromName(lastUsed, myDefaultLayout)
@@ -83,8 +64,8 @@ class CustomEditor(
     private val splitter: JBSplitter by lazy {
         JBSplitter(false, 0.5f, 0.15f, 0.85f).apply {
             splitterProportionKey = splitterProportionKey
-            firstComponent = myEditor.component
-            secondComponent = myPreview[currentPreview].component
+            firstComponent = baseEditor.component
+            secondComponent = splitEditors[currentPreview].component
             dividerWidth = 3
         }
     }
@@ -93,24 +74,9 @@ class CustomEditor(
     private val currentGroup = DefaultActionGroup()
     private val methodsClassNames: MutableList<String> = ArrayList()
 
-    constructor(
-        editor: TextEditor,
-        preview: List<FileEditor>,
-        editorName: String,
-        curPreview: Int
-    ) : this(editor, preview, editorName, Layout.SHOW_EDITOR_AND_PREVIEW, curPreview) {
-    }
-
-    constructor(
-        editor: TextEditor,
-        preview: List<FileEditor>,
-        curPreview: Int
-    ) : this(editor, preview, "TextEditorWithPreview", curPreview) {
-    }
-
     fun changeEditor(item: FileEditor) {
-        currentPreview = myPreview.indexOf(item)
-        splitter.secondComponent = myPreview[currentPreview].component
+        currentPreview = splitEditors.indexOf(item)
+        splitter.secondComponent = splitEditors[currentPreview].component
     }
 
     fun changeDebugAndRun(item: List<AnAction>) {
@@ -121,32 +87,32 @@ class CustomEditor(
     }
 
     override fun getBackgroundHighlighter(): BackgroundEditorHighlighter? {
-        return myEditor.backgroundHighlighter
+        return baseEditor.backgroundHighlighter
     }
 
     override fun getCurrentLocation(): FileEditorLocation? {
-        return myEditor.currentLocation
+        return baseEditor.currentLocation
     }
 
     override fun getStructureViewBuilder(): StructureViewBuilder? {
-        return myEditor.structureViewBuilder
+        return baseEditor.structureViewBuilder
     }
 
     override fun dispose() {
-        Disposer.dispose(myEditor)
-        val fileEditor = myPreview[currentPreview]
+        Disposer.dispose(baseEditor)
+        val fileEditor = splitEditors[currentPreview]
         fileEditor.dispose()
     }
 
     override fun selectNotify() {
-        myEditor.selectNotify()
-        val fileEditor = myPreview[currentPreview]
+        baseEditor.selectNotify()
+        val fileEditor = splitEditors[currentPreview]
         fileEditor.selectNotify()
     }
 
     override fun deselectNotify() {
-        myEditor.deselectNotify()
-        val fileEditor = myPreview[currentPreview]
+        baseEditor.deselectNotify()
+        val fileEditor = splitEditors[currentPreview]
         fileEditor.deselectNotify()
     }
 
@@ -226,10 +192,10 @@ class CustomEditor(
         if (state is MyFileEditorState) {
             val compositeState = state
             if (compositeState.firstState != null) {
-                myEditor.setState(compositeState.firstState)
+                baseEditor.setState(compositeState.firstState)
             }
             if (compositeState.secondState != null) {
-                myPreview[currentPreview].setState(compositeState.secondState)
+                splitEditors[currentPreview].setState(compositeState.secondState)
             }
             if (compositeState.splitLayout != null) {
                 myLayout = compositeState.splitLayout
@@ -239,10 +205,10 @@ class CustomEditor(
     }
 
     private fun adjustEditorsVisibility() {
-        myEditor
+        baseEditor
             .component.isVisible =
             myLayout == Layout.SHOW_EDITOR || myLayout == Layout.SHOW_EDITOR_AND_PREVIEW
-        myPreview[currentPreview]
+        splitEditors[currentPreview]
             .component.isVisible =
             myLayout == Layout.SHOW_PREVIEW || myLayout == Layout.SHOW_EDITOR_AND_PREVIEW
     }
@@ -259,34 +225,34 @@ class CustomEditor(
 
     override fun getPreferredFocusedComponent(): JComponent? {
         return when (myLayout) {
-            Layout.SHOW_EDITOR_AND_PREVIEW, Layout.SHOW_EDITOR -> myEditor.preferredFocusedComponent
-            Layout.SHOW_PREVIEW -> myPreview[currentPreview].preferredFocusedComponent
+            Layout.SHOW_EDITOR_AND_PREVIEW, Layout.SHOW_EDITOR -> baseEditor.preferredFocusedComponent
+            Layout.SHOW_PREVIEW -> splitEditors[currentPreview].preferredFocusedComponent
         }
     }
 
     override fun getName(): String {
-        return myName
+        return name
     }
 
     override fun getState(level: FileEditorStateLevel): FileEditorState {
-        return MyFileEditorState(myLayout, myEditor.getState(level), myPreview[currentPreview].getState(level))
+        return MyFileEditorState(myLayout, baseEditor.getState(level), splitEditors[currentPreview].getState(level))
     }
 
     override fun addPropertyChangeListener(listener: PropertyChangeListener) {
-        myEditor.addPropertyChangeListener(listener)
-        myPreview[currentPreview].addPropertyChangeListener(listener)
-        val delegate = myListenersGenerator.addListenerAndGetDelegate(listener)
-        myEditor.addPropertyChangeListener(delegate)
-        myPreview[currentPreview].addPropertyChangeListener(delegate)
+        baseEditor.addPropertyChangeListener(listener)
+        splitEditors[currentPreview].addPropertyChangeListener(listener)
+        val delegate = listenersGenerator.addListenerAndGetDelegate(listener)
+        baseEditor.addPropertyChangeListener(delegate)
+        splitEditors[currentPreview].addPropertyChangeListener(delegate)
     }
 
     override fun removePropertyChangeListener(listener: PropertyChangeListener) {
-        myEditor.removePropertyChangeListener(listener)
-        myPreview[currentPreview].removePropertyChangeListener(listener)
-        val delegate = myListenersGenerator.removeListenerAndGetDelegate(listener)
+        baseEditor.removePropertyChangeListener(listener)
+        splitEditors[currentPreview].removePropertyChangeListener(listener)
+        val delegate = listenersGenerator.removeListenerAndGetDelegate(listener)
         if (delegate != null) {
-            myEditor.removePropertyChangeListener(delegate)
-            myPreview[currentPreview].removePropertyChangeListener(delegate)
+            baseEditor.removePropertyChangeListener(delegate)
+            splitEditors[currentPreview].removePropertyChangeListener(delegate)
         }
     }
 
@@ -303,11 +269,11 @@ class CustomEditor(
     }
 
     override fun isModified(): Boolean {
-        return myEditor.isModified || myPreview[currentPreview].isModified
+        return baseEditor.isModified || splitEditors[currentPreview].isModified
     }
 
     override fun isValid(): Boolean {
-        return myEditor.isValid && myPreview[currentPreview].isValid
+        return baseEditor.isValid && splitEditors[currentPreview].isValid
     }
 
     private inner class DoublingEventListenerDelegate(private val myDelegate: PropertyChangeListener) :
@@ -319,7 +285,7 @@ class CustomEditor(
         }
     }
 
-    private inner class MyListenersMultimap {
+    private inner class ListenersMultimap {
         private val myMap: MutableMap<PropertyChangeListener, Pair<Int, DoublingEventListenerDelegate>> = HashMap()
 
         fun addListenerAndGetDelegate(listener: PropertyChangeListener): DoublingEventListenerDelegate {
@@ -356,10 +322,10 @@ class CustomEditor(
     }
 
     private fun createBuildActionGroup() {
-        val file = myEditor.file ?: return
+        val file = baseEditor.file ?: return
         val name = file.nameWithoutExtension
         val truePath = file.path
-        val path = myEditor.editor.project!!.basePath
+        val path = baseEditor.editor.project!!.basePath
         val testMethods = collectMethods(name, path!!, truePath)
         val ex = TestRunLineMarkerProvider()
         for (testMethod in testMethods) {
@@ -493,7 +459,7 @@ class CustomEditor(
         }
 
         override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
-            val box: ComboBox<*> = ComboBox(DefaultComboBoxModel<Any?>(myPreview.toTypedArray()))
+            val box: ComboBox<*> = ComboBox(DefaultComboBoxModel<Any?>(splitEditors.toTypedArray()))
             box.addActionListener { event: ActionEvent? -> changeEditor(box.item as FileEditor) }
             box.renderer = object : DefaultListCellRenderer() {
                 override fun getListCellRendererComponent(
@@ -590,21 +556,21 @@ class CustomEditor(
     }
 
     private val layoutPropertyName: String
-        get() = myName + "Layout"
+        get() = name + "Layout"
 
     override fun getFile(): VirtualFile? {
-        return myEditor.file
+        return baseEditor.file
     }
 
     override fun getEditor(): Editor {
-        return myEditor.editor
+        return baseEditor.editor
     }
 
     override fun canNavigateTo(navigatable: Navigatable): Boolean {
-        return myEditor.canNavigateTo(navigatable)
+        return baseEditor.canNavigateTo(navigatable)
     }
 
     override fun navigateTo(navigatable: Navigatable) {
-        myEditor.navigateTo(navigatable)
+        baseEditor.navigateTo(navigatable)
     }
 }
