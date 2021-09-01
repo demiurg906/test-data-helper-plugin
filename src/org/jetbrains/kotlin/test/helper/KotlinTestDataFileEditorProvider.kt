@@ -26,17 +26,9 @@ class KotlinTestDataFileEditorProvider: AsyncFileEditorProvider {
     override fun createEditorAsync(project: Project, file: VirtualFile): AsyncFileEditorProvider.Builder {
         return object: AsyncFileEditorProvider.Builder() {
             override fun build(): FileEditor {
-                val originalEditor = TextEditorProvider.getInstance().createEditor(project, file) as TextEditor
-                val curFileName = File(file.path).nameWithoutExtension
-                //
-                val fileSystem2 = LocalFileSystem.getInstance()
-                val allTestFile = when (val newFile2 =  fileSystem2.findFileByIoFile(File(file.path).parentFile)) {
-                    null -> listOf()
-                    else -> newFile2.children.filter { it.name.startsWith(Paths.get(curFileName + ".").toString()) }
-                }
-                println(allTestFile.size)
-                val editors = allTestFile.map { TextEditorProvider.getInstance().createEditor(project, it) }
-                return TestDataEditor(originalEditor, editors)
+                val baseEditor = TextEditorProvider.getInstance().createEditor(project, file) as TextEditor
+
+                return TestDataEditor(baseEditor)
             }
         }
     }

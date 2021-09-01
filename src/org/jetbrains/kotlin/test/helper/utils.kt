@@ -1,5 +1,6 @@
 package org.jetbrains.kotlin.test.helper
 
+import com.intellij.openapi.vfs.VirtualFile
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
@@ -19,3 +20,6 @@ fun <T : Any> lazyVar(init: () -> T) : ReadWriteProperty<Any?, T> {
         }
     }
 }
+
+val VirtualFile.simpleNameUntilFirstDot: String
+    get() = name.takeWhile { it != '.' }

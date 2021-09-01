@@ -9,7 +9,7 @@ import com.intellij.openapi.fileEditor.*
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Pair
 import com.intellij.openapi.util.UserDataHolderBase
-import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.*
 import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.pom.Navigatable
 import com.intellij.ui.JBSplitter
@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.test.helper.state.PreviewEditorState
 import org.jetbrains.kotlin.test.helper.state.RunTestBoxState
 import org.jetbrains.kotlin.test.helper.actions.ChooseAdditionalFileAction
 import org.jetbrains.kotlin.test.helper.actions.GeneratedTestComboBoxAction
+import org.jetbrains.kotlin.test.helper.simpleNameUntilFirstDot
 import java.beans.PropertyChangeEvent
 import java.beans.PropertyChangeListener
 import java.util.*
@@ -25,15 +26,17 @@ import javax.swing.*
 
 class TestDataEditor(
     private val baseEditor: TextEditor,
-    splitEditors: List<FileEditor>,
     private val name: String = "Test Data"
 ) : UserDataHolderBase(), TextEditor {
+
+    init {
+        baseEditor.file?.fileSystem?.let { registerListener(it) }
+    }
 
     // ------------------------------------- components -------------------------------------
 
     private val previewEditorState: PreviewEditorState = PreviewEditorState(
         baseEditor,
-        splitEditors,
         PropertiesComponent.getInstance().getValue(lastUsedPreviewPropertyName)?.toIntOrNull() ?: 0
     )
 
@@ -42,6 +45,7 @@ class TestDataEditor(
     }
 
     private lateinit var editorViewMode: EditorViewMode
+    lateinit var chooseAdditionalFileAction: ChooseAdditionalFileAction
 
     private val splitter: JBSplitter by lazy {
         JBSplitter(false, 0.5f, 0.15f, 0.85f).apply {
@@ -85,7 +89,8 @@ class TestDataEditor(
     }
 
     private fun createPreviewActionGroup(): ActionGroup {
-        return DefaultActionGroup(ChooseAdditionalFileAction(this, previewEditorState))
+        chooseAdditionalFileAction = ChooseAdditionalFileAction(this, previewEditorState)
+        return DefaultActionGroup(chooseAdditionalFileAction)
     }
 
     fun updatePreviewEditor() {
@@ -218,6 +223,42 @@ class TestDataEditor(
             return (otherState is MyFileEditorState
                     && (firstState == null || firstState.canBeMergedWith(otherState.firstState!!, level))
                     && (secondState == null || secondState.canBeMergedWith(otherState.secondState!!, level)))
+        }
+    }
+
+    private fun registerListener(fileSystem: VirtualFileSystem) {
+        val listener = TestDataFileUpdateListener()
+        fileSystem.addVirtualFileListener(listener) { fileSystem.removeVirtualFileListener(listener) }
+    }
+
+    private inner class TestDataFileUpdateListener : VirtualFileListener {
+        private val baseFile = baseEditor.file!!
+        private val baseName = baseFile.simpleNameUntilFirstDot
+
+        override fun fileCreated(event: VirtualFileEvent) {
+            updatePreviewList(event.file)
+        }
+
+        override fun fileDeleted(event: VirtualFileEvent) {
+            updatePreviewList(event.file)
+        }
+
+        override fun fileMoved(event: VirtualFileMoveEvent) {
+            updatePreviewList(event.file)
+        }
+
+        private fun updatePreviewList(file: VirtualFile) {
+            if (file.belongsToBaseFile()) {
+                previewEditorState.updatePreviewEditors()
+                chooseAdditionalFileAction.updateBoxList()
+                updatePreviewEditor()
+            }
+        }
+
+        private fun VirtualFile.belongsToBaseFile(): Boolean {
+            if (isDirectory) return false
+            if (parent != baseFile.parent) return false
+            return baseName == this.simpleNameUntilFirstDot
         }
     }
 

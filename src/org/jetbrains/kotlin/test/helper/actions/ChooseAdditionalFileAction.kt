@@ -16,17 +16,22 @@ class ChooseAdditionalFileAction(
     private val testDataEditor: TestDataEditor,
     private val previewEditorState: PreviewEditorState
 ) : ComboBoxAction() {
+    private lateinit var model: DefaultComboBoxModel<FileEditor>
+    private lateinit var box: ComboBox<FileEditor>
+
     override fun createPopupActionGroup(button: JComponent): DefaultActionGroup {
         return DefaultActionGroup()
     }
 
     override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
-        val box = ComboBox(DefaultComboBoxModel(previewEditorState.previewEditors.toTypedArray())).apply {
-            item = previewEditorState.previewEditors[previewEditorState.currentPreviewIndex]
+        model = DefaultComboBoxModel(previewEditorState.previewEditors.toTypedArray())
+        box = ComboBox(model).apply {
+            item = previewEditorState.currentPreview
             addActionListener {
-                previewEditorState.chooseNewEditor(item)
-
-                testDataEditor.updatePreviewEditor()
+                if (item != null) {
+                    previewEditorState.chooseNewEditor(item)
+                    testDataEditor.updatePreviewEditor()
+                }
             }
             renderer = object : DefaultListCellRenderer() {
                 override fun getListCellRendererComponent(
@@ -51,5 +56,11 @@ class ChooseAdditionalFileAction(
             add(label)
             add(box)
         }
+    }
+
+    fun updateBoxList() {
+        model.removeAllElements()
+        model.addAll(previewEditorState.previewEditors)
+        box.item = previewEditorState.currentPreview
     }
 }
