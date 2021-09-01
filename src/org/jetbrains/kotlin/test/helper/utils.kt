@@ -21,5 +21,25 @@ fun <T : Any> lazyVar(init: () -> T) : ReadWriteProperty<Any?, T> {
     }
 }
 
+private val DIGIT_REGEX = """\d+""".toRegex()
+
+@OptIn(ExperimentalStdlibApi::class)
 val VirtualFile.simpleNameUntilFirstDot: String
-    get() = name.takeWhile { it != '.' }
+    get() {
+        var processingFirst: Boolean = true
+        val parts = buildList {
+            for (part in name.split(".")) {
+                val isNumber = DIGIT_REGEX.matches(part)
+                if (processingFirst) {
+                    add(part)
+                    processingFirst = false
+                    continue
+                }
+                if (!isNumber) {
+                    break
+                }
+                add(part)
+            }
+        }
+        return parts.joinToString(".")
+    }
