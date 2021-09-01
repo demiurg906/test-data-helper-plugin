@@ -1,1 +1,1 @@
-rootProject.name = "plugin_template"
+rootProject.name = "test-data-helper-plugin"

@@ -122,3 +122,7 @@ sourceSets {
         java.srcDir("test")
     }
 }
+
+tasks.withType<KotlinCompile>().forEach {
+    it.kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
+}
