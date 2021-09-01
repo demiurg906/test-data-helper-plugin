@@ -6,6 +6,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.idea.KotlinFileType
+import org.jetbrains.kotlin.test.helper.ui.TestDataEditor
 import java.io.File
 import java.nio.file.Paths
 

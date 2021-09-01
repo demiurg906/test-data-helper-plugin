@@ -1,4 +1,4 @@
-package org.jetbrains.kotlin.test.helper
+package org.jetbrains.kotlin.test.helper.state
 
 import com.intellij.execution.Location
 import com.intellij.execution.PsiLocation

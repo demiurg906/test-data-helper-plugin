@@ -7,8 +7,8 @@ import com.intellij.openapi.actionSystem.ex.ComboBoxAction
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.components.JBLabel
-import org.jetbrains.kotlin.test.helper.PreviewEditorState
-import org.jetbrains.kotlin.test.helper.TestDataEditor
+import org.jetbrains.kotlin.test.helper.state.PreviewEditorState
+import org.jetbrains.kotlin.test.helper.ui.TestDataEditor
 import java.awt.Component
 import javax.swing.*
 

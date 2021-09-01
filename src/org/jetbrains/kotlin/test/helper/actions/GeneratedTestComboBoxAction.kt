@@ -6,7 +6,7 @@ import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ex.ComboBoxAction
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.components.JBLabel
-import org.jetbrains.kotlin.test.helper.RunTestBoxState
+import org.jetbrains.kotlin.test.helper.state.RunTestBoxState
 import java.awt.Component
 import javax.swing.*
 

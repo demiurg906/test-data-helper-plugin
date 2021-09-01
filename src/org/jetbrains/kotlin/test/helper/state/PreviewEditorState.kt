@@ -1,4 +1,4 @@
-package org.jetbrains.kotlin.test.helper
+package org.jetbrains.kotlin.test.helper.state
 
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.TextEditor

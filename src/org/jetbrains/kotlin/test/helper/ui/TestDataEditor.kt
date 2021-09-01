@@ -1,4 +1,4 @@
-package org.jetbrains.kotlin.test.helper
+package org.jetbrains.kotlin.test.helper.ui
 
 import com.intellij.codeHighlighting.BackgroundEditorHighlighter
 import com.intellij.ide.structureView.StructureViewBuilder
@@ -14,6 +14,8 @@ import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.pom.Navigatable
 import com.intellij.ui.JBSplitter
 import com.intellij.util.ui.JBUI
+import org.jetbrains.kotlin.test.helper.state.PreviewEditorState
+import org.jetbrains.kotlin.test.helper.state.RunTestBoxState
 import org.jetbrains.kotlin.test.helper.actions.ChooseAdditionalFileAction
 import org.jetbrains.kotlin.test.helper.actions.GeneratedTestComboBoxAction
 import java.beans.PropertyChangeEvent
