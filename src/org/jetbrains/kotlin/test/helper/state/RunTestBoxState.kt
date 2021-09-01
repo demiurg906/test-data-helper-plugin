@@ -99,7 +99,7 @@ class RunTestBoxState(val baseEditor: TextEditor) {
     private fun collectMethods(baseName: String, path: String, truePath: String): List<PsiMethod> {
         val cache = PsiShortNamesCache.getInstance(project)
 
-        val targetMethodName = "test${baseName.replaceFirstChar { it.toUpperCase() }}"
+        val targetMethodName = "test${baseName.replaceFirstChar { it.toUpperCase() }.replace(".", "_")}"
         val methods = cache.getMethodsByName(targetMethodName, GlobalSearchScope.allScope(project))
             .filter { it.hasAnnotation("org.jetbrains.kotlin.test.TestMetadata") }
 
