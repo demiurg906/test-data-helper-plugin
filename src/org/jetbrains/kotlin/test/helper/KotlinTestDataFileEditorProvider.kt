@@ -3,6 +3,7 @@ package org.jetbrains.kotlin.test.helper
 import com.intellij.openapi.fileEditor.*
 import com.intellij.openapi.fileEditor.impl.text.TextEditorProvider
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.idea.KotlinFileType
@@ -12,7 +13,10 @@ import java.nio.file.Paths
 
 class KotlinTestDataFileEditorProvider: AsyncFileEditorProvider {
     override fun accept(project: Project, file: VirtualFile): Boolean {
-        return file.fileType == KotlinFileType.INSTANCE
+        if (file.fileType != KotlinFileType.INSTANCE) return false
+        val configuration = TestDataPathsConfiguration.getInstance(project)
+        val filePath = file.path
+        return configuration.testDataFiles.any { filePath.startsWith(it) }
     }
 
     override fun createEditor(project: Project, file: VirtualFile): FileEditor {

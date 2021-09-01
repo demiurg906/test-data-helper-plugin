@@ -11,8 +11,7 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <fileEditorProvider implementation="org.jetbrains.kotlin.test.helper.KotlinTestDataFileEditorProvider"/>
-        <applicationConfigurable bundle="messages.MyBundle"
-                                 instance="org.jetbrains.kotlin.test.helper.PluginSettings"/>
-        <applicationService serviceImplementation="org.jetbrains.kotlin.test.helper.TestDataPluginSettings"/>
+        <projectConfigurable bundle="messages.MyBundle" instance="org.jetbrains.kotlin.test.helper.TestDataPathsConfigurable"/>
+        <projectService serviceImplementation="org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration"/>
     </extensions>
 </idea-plugin>
