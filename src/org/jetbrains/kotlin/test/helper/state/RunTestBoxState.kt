@@ -7,8 +7,8 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
@@ -17,22 +17,22 @@ import com.intellij.testIntegration.TestRunLineMarkerProvider
 import java.util.*
 import javax.swing.Icon
 
-class RunTestBoxState(private val project: Project) {
+class RunTestBoxState(val baseEditor: TextEditor) {
+    val project: Project = baseEditor.editor.project!!
     val methodsClassNames: MutableList<String> = mutableListOf()
     val debugAndRunActionLists: MutableList<List<AnAction>> = mutableListOf()
     var currentChosenGroup: Int = 0
     val currentGroup = DefaultActionGroup()
 
-    fun initialize(file: VirtualFile?) {
-        if (file == null) {
-            // TODO: log
-            return
-        }
+    fun initialize() {
+        val file = baseEditor.file ?: return // TODO: log
         val name = file.nameWithoutExtension
         val truePath = file.path
         val path = project.basePath
         val testMethods = collectMethods(name, path!!, truePath)
         val ex = TestRunLineMarkerProvider()
+        debugAndRunActionLists.clear()
+        methodsClassNames.clear()
         for (testMethod in testMethods) {
             val identifier = testMethod.nameIdentifier ?: continue
             val info = ex.getInfo(identifier) ?: continue
@@ -41,6 +41,8 @@ class RunTestBoxState(private val project: Project) {
                 // TODO: log
                 continue
             }
+            val topLevelClass = testMethod.parentsOfType<PsiClass>().last()
+
             val group: List<AnAction> = allActions.take(2).map {
                 object : AnAction() {
                     override fun actionPerformed(e: AnActionEvent) {
@@ -64,6 +66,7 @@ class RunTestBoxState(private val project: Project) {
                     override fun update(e: AnActionEvent) {
                         it.update(e)
                         e.presentation.isEnabledAndVisible = true
+                        e.presentation.description = topLevelClass.name!!
                     }
                 }
 
@@ -77,6 +80,7 @@ class RunTestBoxState(private val project: Project) {
                 override fun update(e: AnActionEvent) {
                     delegate.update(e)
                     e.presentation.icon = icon
+                    e.presentation.description = topLevelClass.name!!
                 }
             }
 
@@ -85,7 +89,6 @@ class RunTestBoxState(private val project: Project) {
 
             debugAndRunActionLists.add(listOf(runTestAction, debugTestAction))
 
-            val topLevelClass = testMethod.parentsOfType<PsiClass>().last()
             methodsClassNames.add(topLevelClass.name!!)
 
             changeDebugAndRun(debugAndRunActionLists[currentChosenGroup])

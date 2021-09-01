@@ -1,6 +1,7 @@
 package org.jetbrains.kotlin.test.helper.ui
 
 import com.intellij.codeHighlighting.BackgroundEditorHighlighter
+import com.intellij.icons.AllIcons
 import com.intellij.ide.structureView.StructureViewBuilder
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.*
@@ -40,8 +41,8 @@ class TestDataEditor(
         PropertiesComponent.getInstance().getValue(lastUsedPreviewPropertyName)?.toIntOrNull() ?: 0
     )
 
-    private val runTestBoxState = RunTestBoxState(baseEditor.editor.project!!).also {
-        it.initialize(baseEditor.file)
+    private val runTestBoxState = RunTestBoxState(baseEditor).also {
+        it.initialize()
     }
 
     private lateinit var editorViewMode: EditorViewMode
@@ -112,11 +113,23 @@ class TestDataEditor(
 
 
     private fun createTestRunToolbar(): ActionToolbar {
+        val generatedTestComboBoxAction = GeneratedTestComboBoxAction(runTestBoxState)
+
+        val reloadGeneratedTestsAction = object : AnAction(AllIcons.Actions.Refresh) {
+            override fun actionPerformed(e: AnActionEvent) {
+                generatedTestComboBoxAction.updateBox()
+            }
+        }
+
         return ActionManager
             .getInstance()
             .createActionToolbar(
                 ActionPlaces.TEXT_EDITOR_WITH_PREVIEW,
-                DefaultActionGroup(GeneratedTestComboBoxAction(runTestBoxState), runTestBoxState.currentGroup),
+                DefaultActionGroup(
+                    generatedTestComboBoxAction,
+                    runTestBoxState.currentGroup,
+                    reloadGeneratedTestsAction
+                ),
                 true
             )
     }
