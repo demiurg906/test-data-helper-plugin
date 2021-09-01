@@ -16,6 +16,10 @@ class ChooseAdditionalFileAction(
     private val testDataEditor: TestDataEditor,
     private val previewEditorState: PreviewEditorState
 ) : ComboBoxAction() {
+    companion object {
+        private const val NO_NAME_PROVIDED = "## no name provided ##"
+    }
+
     private lateinit var model: DefaultComboBoxModel<FileEditor>
     private lateinit var box: ComboBox<FileEditor>
 
@@ -23,10 +27,19 @@ class ChooseAdditionalFileAction(
         return DefaultActionGroup()
     }
 
+    private fun ComboBox<*>.updateBoxWidth() {
+        val fileNameWithMaxLength = previewEditorState.previewEditors
+            .mapNotNull { it.file?.name }
+            .maxByOrNull { it.length }
+            ?: NO_NAME_PROVIDED
+        setMinimumAndPreferredWidth(getFontMetrics(font).stringWidth(fileNameWithMaxLength) + 80)
+    }
+
     override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
         model = DefaultComboBoxModel(previewEditorState.previewEditors.toTypedArray())
         box = ComboBox(model).apply {
             item = previewEditorState.currentPreview
+            updateBoxWidth()
             addActionListener {
                 if (item != null) {
                     previewEditorState.chooseNewEditor(item)
@@ -42,7 +55,7 @@ class ChooseAdditionalFileAction(
                     cellHasFocus: Boolean
                 ): Component {
                     val originalComponent = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
-                    text = (value as? FileEditor)?.file?.name ?: "## no name provided ##"
+                    text = (value as? FileEditor).presentableName
                     return originalComponent
                 }
             }
@@ -58,9 +71,13 @@ class ChooseAdditionalFileAction(
         }
     }
 
+    private val FileEditor?.presentableName: String
+        get() = this?.file?.name ?: NO_NAME_PROVIDED
+
     fun updateBoxList() {
         model.removeAllElements()
         model.addAll(previewEditorState.previewEditors)
         box.item = previewEditorState.currentPreview
+        box.updateBoxWidth()
     }
 }

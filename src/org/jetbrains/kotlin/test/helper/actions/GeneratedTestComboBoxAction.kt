@@ -17,6 +17,8 @@ class GeneratedTestComboBoxAction(val runTestBoxState: RunTestBoxState) : ComboB
 
     override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
         val box = ComboBox(DefaultComboBoxModel(runTestBoxState.debugAndRunActionLists.toTypedArray())).apply {
+            val maxTestName = runTestBoxState.methodsClassNames.maxByOrNull { it.length } ?: ""
+            setMinimumAndPreferredWidth(getFontMetrics(font).stringWidth(maxTestName) + 80)
             addActionListener { runTestBoxState.changeDebugAndRun(item) }
             renderer = object : DefaultListCellRenderer() {
                 override fun getListCellRendererComponent(
