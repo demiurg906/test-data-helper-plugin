@@ -25,7 +25,7 @@ class PreviewEditorState(
         get() = previewEditors[currentPreviewIndex]
 
     val baseFileIsChosen: Boolean
-        get() = baseEditor == previewEditors[currentPreviewIndex]
+        get() = baseEditor.file == previewEditors[currentPreviewIndex].file
 
     fun chooseNewEditor(editor: FileEditor) {
         if (editor !in previewEditors) {
