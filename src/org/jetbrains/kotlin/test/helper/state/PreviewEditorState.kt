@@ -22,17 +22,20 @@ class PreviewEditorState(
         currentPreview.takeIf { it in previewEditors.indices } ?: 0
 
     val currentPreview: FileEditor
-        get() = previewEditors[currentPreviewIndex]
+        get() = previewEditors.getOrNull(currentPreviewIndex) ?: run {
+            currentPreviewIndex = 0
+            baseEditor
+        }
 
     val baseFileIsChosen: Boolean
-        get() = baseEditor.file == previewEditors[currentPreviewIndex].file
+        get() = baseEditor.file == currentPreview.file
 
     fun chooseNewEditor(editor: FileEditor) {
         if (editor !in previewEditors) {
             // TODO: log
             return
         }
-        currentPreviewIndex = previewEditors.indexOf(editor)
+        currentPreviewIndex = previewEditors.indexOf(editor).takeIf { it in previewEditors.indices } ?: 0
     }
 
     fun updatePreviewEditors() {
