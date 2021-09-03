@@ -6,8 +6,8 @@ import com.intellij.ide.structureView.StructureViewBuilder
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.*
-import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Pair
 import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.*
@@ -136,10 +136,36 @@ class TestDataEditor(
 
     // ------------------------------------- actions -------------------------------------
 
+    override fun setState(state: FileEditorState) {
+        if (state !is MyFileEditorState) return
+        if (state.firstState != null) {
+            baseEditor.setState(state.firstState)
+        }
+        if (state.secondState != null) {
+            this@TestDataEditor.previewEditorState.currentPreview.setState(state.secondState)
+        }
+        if (state.splitLayout != null) {
+            editorViewMode = state.splitLayout
+            invalidateLayout()
+        }
+    }
+
+    private fun invalidateLayout() {
+        updatePreviewEditor()
+        myToolbarWrapper.refresh()
+        myComponent.repaint()
+        val focusComponent = preferredFocusedComponent
+        if (focusComponent != null) {
+            IdeFocusManager.findInstanceByComponent(focusComponent).requestFocus(focusComponent, true)
+        }
+    }
+
+    private val listenersGenerator: ListenersMultimap = ListenersMultimap()
+
     private inner class DoublingEventListenerDelegate(private val myDelegate: PropertyChangeListener) : PropertyChangeListener {
         override fun propertyChange(evt: PropertyChangeEvent) {
             myDelegate.propertyChange(
-                PropertyChangeEvent(this, evt.propertyName, evt.oldValue, evt.newValue)
+                PropertyChangeEvent(this@TestDataEditor, evt.propertyName, evt.oldValue, evt.newValue)
             )
         }
     }
@@ -177,33 +203,6 @@ class TestDataEditor(
                     )
             }
             return oldPair.getSecond()
-        }
-    }
-
-    // ------------------------------------- unsorted -------------------------------------
-    private val listenersGenerator: ListenersMultimap = ListenersMultimap()
-
-    override fun setState(state: FileEditorState) {
-        if (state !is MyFileEditorState) return
-        if (state.firstState != null) {
-            baseEditor.setState(state.firstState)
-        }
-        if (state.secondState != null) {
-            this@TestDataEditor.previewEditorState.currentPreview.setState(state.secondState)
-        }
-        if (state.splitLayout != null) {
-            editorViewMode = state.splitLayout
-            invalidateLayout()
-        }
-    }
-
-    private fun invalidateLayout() {
-        updatePreviewEditor()
-        myToolbarWrapper.refresh()
-        myComponent.repaint()
-        val focusComponent = preferredFocusedComponent
-        if (focusComponent != null) {
-            IdeFocusManager.findInstanceByComponent(focusComponent).requestFocus(focusComponent, true)
         }
     }
 
@@ -294,8 +293,11 @@ class TestDataEditor(
     }
 
     override fun dispose() {
-        Disposer.dispose(baseEditor)
-        previewEditorState.previewEditors.forEach { it.dispose() }
+        val editorFactory = EditorFactory.getInstance()
+        editorFactory.releaseEditor(baseEditor.editor)
+        previewEditorState.previewEditors.forEach { previewEditor ->
+            (previewEditor as? TextEditor)?.editor?.let { editorFactory.releaseEditor(it) }
+        }
     }
 
     override fun selectNotify() {
