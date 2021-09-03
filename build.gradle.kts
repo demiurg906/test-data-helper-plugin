@@ -113,6 +113,10 @@ tasks {
     }
 }
 
+(tasks["runIde"] as JavaExec).apply {
+    maxHeapSize = "3g"
+}
+
 sourceSets {
     main {
         java.srcDir("src")
