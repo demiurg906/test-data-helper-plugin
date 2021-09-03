@@ -108,7 +108,6 @@ class RunTestBoxState(val baseEditor: TextEditor) {
             val classPath = method.containingClass?.extractTestMetadataValue() ?: continue
             val methodPathPart = method.extractTestMetadataValue() ?: continue
             val methodPath = "$path/$classPath/$methodPathPart"
-            println("$methodPath | $truePath")
             if (methodPath == truePath) {
                 foundMethods.add(method)
             }
