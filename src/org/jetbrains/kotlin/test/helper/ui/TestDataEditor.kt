@@ -15,15 +15,13 @@ import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.pom.Navigatable
 import com.intellij.ui.JBSplitter
 import com.intellij.util.ui.JBUI
-import org.jetbrains.kotlin.test.helper.state.PreviewEditorState
-import org.jetbrains.kotlin.test.helper.state.RunTestBoxState
 import org.jetbrains.kotlin.test.helper.actions.ChooseAdditionalFileAction
 import org.jetbrains.kotlin.test.helper.actions.GeneratedTestComboBoxAction
 import org.jetbrains.kotlin.test.helper.simpleNameUntilFirstDot
+import org.jetbrains.kotlin.test.helper.state.PreviewEditorState
 import java.beans.PropertyChangeEvent
 import java.beans.PropertyChangeListener
-import java.util.*
-import javax.swing.*
+import javax.swing.JComponent
 
 class TestDataEditor(
     private val baseEditor: TextEditor,
@@ -40,10 +38,6 @@ class TestDataEditor(
         baseEditor,
         PropertiesComponent.getInstance().getValue(lastUsedPreviewPropertyName)?.toIntOrNull() ?: 0
     )
-
-    private val runTestBoxState = RunTestBoxState(baseEditor).also {
-        it.initialize()
-    }
 
     private lateinit var editorViewMode: EditorViewMode
     lateinit var chooseAdditionalFileAction: ChooseAdditionalFileAction
@@ -113,11 +107,11 @@ class TestDataEditor(
 
 
     private fun createTestRunToolbar(): ActionToolbar {
-        val generatedTestComboBoxAction = GeneratedTestComboBoxAction(runTestBoxState)
+        val generatedTestComboBoxAction = GeneratedTestComboBoxAction(baseEditor)
 
         val reloadGeneratedTestsAction = object : AnAction(AllIcons.Actions.Refresh) {
             override fun actionPerformed(e: AnActionEvent) {
-                generatedTestComboBoxAction.updateBox()
+                generatedTestComboBoxAction.state.updateTestsList()
             }
         }
 
@@ -127,7 +121,7 @@ class TestDataEditor(
                 ActionPlaces.TEXT_EDITOR_WITH_PREVIEW,
                 DefaultActionGroup(
                     generatedTestComboBoxAction,
-                    runTestBoxState.currentGroup,
+                    generatedTestComboBoxAction.state.currentGroup,
                     reloadGeneratedTestsAction
                 ),
                 true
