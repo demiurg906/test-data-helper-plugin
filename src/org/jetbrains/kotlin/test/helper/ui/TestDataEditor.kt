@@ -122,6 +122,7 @@ class TestDataEditor(
                 DefaultActionGroup(
                     generatedTestComboBoxAction,
                     generatedTestComboBoxAction.state.currentGroup,
+                    generatedTestComboBoxAction.runAllTestsAction,
                     reloadGeneratedTestsAction
                 ),
                 true

@@ -2,6 +2,11 @@ package org.jetbrains.kotlin.test.helper.actions
 
 import com.intellij.execution.Location
 import com.intellij.execution.PsiLocation
+import com.intellij.execution.executors.DefaultRunExecutor
+import com.intellij.execution.impl.RunConfigurationLevel
+import com.intellij.execution.impl.RunManagerImpl
+import com.intellij.execution.impl.RunnerAndConfigurationSettingsImpl
+import com.intellij.execution.runners.ExecutionUtil
 import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.laf.darcula.DarculaUIUtil
 import com.intellij.openapi.actionSystem.AnAction
@@ -14,6 +19,7 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.TextEditor
+import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.psi.PsiClass
@@ -21,11 +27,17 @@ import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
+import com.intellij.psi.util.parentOfType
 import com.intellij.psi.util.parentsOfType
 import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.kotlin.utils.addToStdlib.firstNotNullResult
+import org.jetbrains.plugins.gradle.execution.GradleRunnerUtil
+import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestRunConfigurationProducer
+import org.jetbrains.plugins.gradle.service.execution.GradleExternalTaskConfigurationType
+import org.jetbrains.plugins.gradle.service.execution.GradleRunConfiguration
+import org.jetbrains.plugins.gradle.util.GradleExecutionSettingsUtil
 import java.awt.Component
 import java.util.concurrent.Callable
 import javax.swing.*
@@ -37,6 +49,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
     private lateinit var box: ComboBox<List<AnAction>>
     private lateinit var boxModel: DefaultComboBoxModel<List<AnAction>>
+    val runAllTestsAction: RunAllTestsAction = RunAllTestsAction()
 
     val state: State = State().also { it.updateTestsList() }
 
@@ -117,6 +130,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             val path = project.basePath
             logger.info("task started")
             val testMethods = collectMethods(name, path!!, truePath)
+            runAllTestsAction.computeTasksToRun(testMethods)
             logger.info("methods collected")
 
             topLevelDirectory = testMethods.firstNotNullResult { method ->
@@ -245,6 +259,50 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             currentChosenGroup = debugAndRunActionLists.indexOf(item)
             currentGroup.addAll(debugAndRunActionLists[currentChosenGroup])
             LastUsedTestService.getInstance(project)?.updateChosenRunner(topLevelDirectory, methodsClassNames[currentChosenGroup])
+        }
+    }
+
+    inner class RunAllTestsAction : AnAction(
+        "Run All...",
+        "Run all tests via gradle",
+        AllIcons.RunConfigurations.Junit
+    ) {
+        private val tasksToRun = mutableSetOf<String>()
+        private val testFilters = mutableSetOf<String>()
+
+        fun computeTasksToRun(testMethods: List<PsiMethod>) {
+            tasksToRun.clear()
+            testFilters.clear()
+
+            for (testMethod in testMethods) {
+                val parentClass = testMethod.parentOfType<PsiClass>() ?: continue
+                testFilters += GradleExecutionSettingsUtil.createTestFilterFrom(parentClass, testMethod, hasSuffix = false)
+                val virtualFile = testMethod.containingFile?.virtualFile ?: continue
+                GradleTestRunConfigurationProducer.findAllTestsTaskToRun(virtualFile, testMethod.project)
+                    .flatMapTo(tasksToRun) { it.tasks }
+            }
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            val project = e.project!!
+            val fileName = e.dataContext.getData(PsiLocation.DATA_KEY)?.psiElement?.containingFile?.name ?: "<no name provided>"
+
+            val moduleManager = ModuleManager.getInstance(project)
+            val rootModule = moduleManager.findModuleByName(project.name) ?: return
+            val projectPath = GradleRunnerUtil.resolveProjectPath(rootModule) ?: return
+            val configuration = GradleExternalTaskConfigurationType.getInstance().factory.createTemplateConfiguration(project).apply {
+                require(this is GradleRunConfiguration)
+                name = "All tests for $fileName"
+                settings.apply {
+                    taskNames = tasksToRun.toList()
+                    scriptParameters = testFilters.joinToString(" ")
+                    externalProjectPath = projectPath
+                }
+            }
+            val runManager = RunManagerImpl.getInstanceImpl(e.project!!)
+            val runnerAndConfigurationSettings = RunnerAndConfigurationSettingsImpl(runManager, configuration, level = RunConfigurationLevel.TEMPORARY)
+            val executor = DefaultRunExecutor.getRunExecutorInstance()
+            ExecutionUtil.runConfiguration(runnerAndConfigurationSettings, executor)
         }
     }
 }
