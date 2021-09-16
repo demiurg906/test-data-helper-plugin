@@ -25,6 +25,7 @@ import com.intellij.psi.util.parentsOfType
 import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.concurrency.AppExecutorUtil
+import org.jetbrains.kotlin.utils.addToStdlib.firstNotNullResult
 import java.awt.Component
 import java.util.concurrent.Callable
 import javax.swing.*
@@ -101,96 +102,109 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         var topLevelDirectory: String? = null
 
         fun updateTestsList() {
-            val file = baseEditor.file ?: return // TODO: log
+            logger.info("task scheduled")
+            ReadAction
+                .nonBlocking(Callable { createActionsForTestRunners().also { logger.info("actions created") } })
+                .inSmartMode(project)
+                .finishOnUiThread(ModalityState.defaultModalityState(), this@State::updateUiAccordingCollectedTests)
+                .submit(AppExecutorUtil.getAppExecutorService())
+        }
+
+        private fun createActionsForTestRunners(): List<Pair<String, List<AnAction>>> {
+            val file = baseEditor.file ?: return emptyList() // TODO: log
             val name = file.nameWithoutExtension
             val truePath = file.path
             val path = project.basePath
+            logger.info("task started")
+            val testMethods = collectMethods(name, path!!, truePath)
+            logger.info("methods collected")
 
-            val task = Callable {
-                logger.info("task started")
-                val testMethods = collectMethods(name, path!!, truePath)
-                logger.info("methods collected")
+            topLevelDirectory = testMethods.firstNotNullResult { method ->
+                method.parentsOfType(PsiClass::class.java)
+                    .toList()
+                    .asReversed()
+                    .firstNotNullResult { it.extractTestMetadataValue() }
+            }
 
-                topLevelDirectory = testMethods.firstOrNull()?.let {
-                    it.parentsOfType(PsiClass::class.java).lastOrNull()?.extractTestMetadataValue()
+            val ex = TestRunLineMarkerProvider()
+            debugAndRunActionLists.clear()
+            methodsClassNames.clear()
+            return testMethods.mapNotNull { testMethod ->
+                val identifier = testMethod.nameIdentifier ?: return@mapNotNull null
+                val info = ex.getInfo(identifier) ?: return@mapNotNull null
+                val allActions = info.actions
+                if (allActions.size < 2) {
+                    logger.info("Not enough actions: ${allActions.size}")
+                    return@mapNotNull null
                 }
+                val topLevelClass = testMethod.parentsOfType<PsiClass>().last()
 
-                val ex = TestRunLineMarkerProvider()
-                debugAndRunActionLists.clear()
-                methodsClassNames.clear()
-                testMethods.mapNotNull { testMethod ->
-                    val identifier = testMethod.nameIdentifier ?: return@mapNotNull null
-                    val info = ex.getInfo(identifier) ?: return@mapNotNull null
-                    val allActions = info.actions
-                    if (allActions.size < 2) {
-                        logger.info("Not enough actions: ${allActions.size}")
-                        return@mapNotNull null
-                    }
-                    val topLevelClass = testMethod.parentsOfType<PsiClass>().last()
-
-                    val group: List<AnAction> = allActions.take(2).map {
-                        object : AnAction() {
-                            override fun actionPerformed(e: AnActionEvent) {
-                                val dataContext = SimpleDataContext.builder().apply {
-                                    val newLocation = PsiLocation.fromPsiElement(identifier)
-                                    setParent(e.dataContext)
-                                    add(Location.DATA_KEY, newLocation)
-                                }.build()
-
-                                val newEvent = AnActionEvent(
-                                    e.inputEvent,
-                                    dataContext,
-                                    e.place,
-                                    e.presentation,
-                                    e.actionManager,
-                                    e.modifiers
-                                )
-                                it.actionPerformed(newEvent)
-                            }
-
-                            override fun update(e: AnActionEvent) {
-                                it.update(e)
-                                e.presentation.isEnabledAndVisible = true
-                                e.presentation.description = topLevelClass.name!!
-                            }
-                        }
-                    }
-
-                    class DelegatingAction(val delegate: AnAction, val icon: Icon) : AnAction() {
+                val group: List<AnAction> = allActions.take(2).map {
+                    object : AnAction() {
                         override fun actionPerformed(e: AnActionEvent) {
-                            delegate.actionPerformed(e)
+                            val dataContext = SimpleDataContext.builder().apply {
+                                val newLocation = PsiLocation.fromPsiElement(identifier)
+                                setParent(e.dataContext)
+                                add(Location.DATA_KEY, newLocation)
+                            }.build()
+
+                            val newEvent = AnActionEvent(
+                                e.inputEvent,
+                                dataContext,
+                                e.place,
+                                e.presentation,
+                                e.actionManager,
+                                e.modifiers
+                            )
+                            it.actionPerformed(newEvent)
                         }
 
                         override fun update(e: AnActionEvent) {
-                            delegate.update(e)
-                            e.presentation.icon = icon
+                            it.update(e)
+                            e.presentation.isEnabledAndVisible = true
                             e.presentation.description = topLevelClass.name!!
                         }
+
+                        override fun toString(): String {
+                            return "Run/Debug ${topLevelClass.name}"
+                        }
+                    }
+                }
+
+                class DelegatingAction(val delegate: AnAction, val icon: Icon) : AnAction() {
+                    override fun actionPerformed(e: AnActionEvent) {
+                        delegate.actionPerformed(e)
                     }
 
-                    val runTestAction = DelegatingAction(group[0], AllIcons.Actions.Execute)
-                    val debugTestAction: AnAction = DelegatingAction(group[1], AllIcons.Actions.StartDebugger)
+                    override fun update(e: AnActionEvent) {
+                        delegate.update(e)
+                        e.presentation.icon = icon
+                        e.presentation.description = topLevelClass.name!!
+                    }
+                }
 
-                    topLevelClass.name!! to listOf(runTestAction, debugTestAction)
-                }.also { logger.info("actions created") }
+                val runTestAction = DelegatingAction(group[0], AllIcons.Actions.Execute)
+                val debugTestAction: AnAction = DelegatingAction(group[1], AllIcons.Actions.StartDebugger)
+
+                topLevelClass.name!! to listOf(runTestAction, debugTestAction)
+            }
+        }
+
+        private fun updateUiAccordingCollectedTests(classAndActions: List<Pair<String, List<AnAction>>>) {
+            logger.info("ui update started")
+            for ((className, actions) in classAndActions) {
+                debugAndRunActionLists.add(actions)
+                methodsClassNames.add(className)
+            }
+            val lastUsedRunner = LastUsedTestService.getInstance(project)?.getLastUsedRunnerForFile(baseEditor.file!!)
+            methodsClassNames.indexOf(lastUsedRunner).takeIf { it in methodsClassNames.indices }?.let {
+                currentChosenGroup = it
             }
 
-            logger.info("task scheduled")
-            ReadAction
-                .nonBlocking(task)
-                .inSmartMode(project)
-                .finishOnUiThread(ModalityState.defaultModalityState()) { classAndActions ->
-                    logger.info("ui update started")
-                    for ((className, actions) in classAndActions) {
-                        debugAndRunActionLists.add(actions)
-                        methodsClassNames.add(className)
-                    }
-                    val chosenActionsList = debugAndRunActionLists.getOrNull(currentChosenGroup)
-                    changeDebugAndRun(chosenActionsList)
-                    updateBox(chosenActionsList)
-                    logger.info("ui update finished")
-                }
-                .submit(AppExecutorUtil.getAppExecutorService())
+            val chosenActionsList = debugAndRunActionLists.getOrNull(currentChosenGroup)
+            changeDebugAndRun(chosenActionsList)
+            updateBox(chosenActionsList)
+            logger.info("ui update finished")
         }
 
         @OptIn(ExperimentalStdlibApi::class)
@@ -230,6 +244,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             }
             currentChosenGroup = debugAndRunActionLists.indexOf(item)
             currentGroup.addAll(debugAndRunActionLists[currentChosenGroup])
+            LastUsedTestService.getInstance(project)?.updateChosenRunner(topLevelDirectory, methodsClassNames[currentChosenGroup])
         }
     }
 }
