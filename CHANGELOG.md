@@ -1,7 +1,6 @@
 <!-- Keep a Changelog guide -> https://keepachangelog.com -->
 
-# plugin_template Changelog
+# Changelog
 
-## [Unreleased]
-### Added
-- Initial scaffold created from [IntelliJ Platform Plugin Template](https://github.com/JetBrains/intellij-platform-plugin-template)
+## 0.0.12
+- Initial release of plugin
