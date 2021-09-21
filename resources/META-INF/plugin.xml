@@ -2,7 +2,6 @@
     <id>org.jetbrains.kotlin.test.helper</id>
     <name>Kotlin Compiler Test Helper</name>
     <vendor email="dmitriy.novozhilov@jetbrains.com">demiurg906</vendor>
-    <version>0.0.12</version>
 
     <!-- Product and plugin compatibility requirements -->
     <!-- https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
