@@ -91,7 +91,9 @@ tasks {
                 if (!containsAll(listOf(start, end))) {
                     throw GradleException("Plugin description section not found in README.md:\n$start ... $end")
                 }
-                subList(indexOf(start) + 1, indexOf(end))
+                subList(indexOf(start) + 1, indexOf(end)).map {
+                    it.replace("](pic/", "](https://raw.githubusercontent.com/demiurg906/test-data-helper-plugin/master/pic/")
+                }
             }.joinToString("\n").run { markdownToHTML(this) }
         )
 
