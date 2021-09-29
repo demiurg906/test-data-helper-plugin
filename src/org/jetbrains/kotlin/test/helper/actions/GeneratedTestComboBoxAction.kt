@@ -47,8 +47,8 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         private val logger = Logger.getInstance(GeneratedTestComboBoxAction::class.java)
     }
 
-    private lateinit var box: ComboBox<List<AnAction>>
-    private lateinit var boxModel: DefaultComboBoxModel<List<AnAction>>
+    private var box: ComboBox<List<AnAction>>? = null
+    private var boxModel: DefaultComboBoxModel<List<AnAction>>? = null
     val runAllTestsAction: RunAllTestsAction = RunAllTestsAction()
 
     val state: State = State().also { it.updateTestsList() }
@@ -58,7 +58,8 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
     }
 
     override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
-        boxModel = DefaultComboBoxModel(state.debugAndRunActionLists.toTypedArray())
+        val boxModel = DefaultComboBoxModel(state.debugAndRunActionLists.toTypedArray())
+        this.boxModel = boxModel
         box = ComboBox(boxModel).apply {
             addActionListener {
                 item?.let { state.changeDebugAndRun(it) }
@@ -85,6 +86,8 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             updateWidth()
         }
 
+        state.updateTestsList()
+
         val label = JBLabel("Tests: ")
 
         return JPanel().apply {
@@ -100,6 +103,8 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
     }
 
     private fun updateBox(chosenActionsList: List<AnAction>?) {
+        val boxModel = this.boxModel ?: return
+        val box = this.box ?: return
         boxModel.removeAllElements()
         boxModel.addAll(state.debugAndRunActionLists)
         box.item = chosenActionsList
