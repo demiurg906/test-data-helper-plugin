@@ -50,7 +50,7 @@ class PreviewEditorState(
 
         val curFileName = file.simpleNameUntilFirstDot
 
-        val relatedFiles = file.parent.children.filter { it.name.startsWith(curFileName) }
+        val relatedFiles = file.parent.children.filter { it.name.startsWith("$curFileName.") }
 
         return relatedFiles.map { TextEditorProvider.getInstance().createEditor(project, it) }
     }
