@@ -2,8 +2,11 @@
 
 # Changelog
 
+## 0.0.14
+- Fix `UninitializedPropertyAccessException` on 212 platform
+
 ## 0.0.13
-- Limit 
+- Limit max compatible version with 2021.2 
 
 ## 0.0.12
 - Initial release of plugin
