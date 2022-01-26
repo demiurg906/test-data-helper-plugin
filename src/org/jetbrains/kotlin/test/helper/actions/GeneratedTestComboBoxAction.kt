@@ -31,6 +31,7 @@ import com.intellij.psi.util.parentOfType
 import com.intellij.psi.util.parentsOfType
 import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.components.JBLabel
+import com.intellij.util.SlowOperations
 import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.kotlin.utils.addToStdlib.firstNotNullResult
 import org.jetbrains.plugins.gradle.execution.GradleRunnerUtil
@@ -179,7 +180,10 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                         }
 
                         override fun update(e: AnActionEvent) {
-                            it.update(e)
+                            // Workaround for https://youtrack.jetbrains.com/issue/IDEA-287440
+                            SlowOperations.allowSlowOperations<Nothing> {
+                                it.update(e)
+                            }
                             e.presentation.isEnabledAndVisible = true
                             e.presentation.description = topLevelClass.name!!
                         }
