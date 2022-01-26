@@ -1,7 +1,6 @@
 package org.jetbrains.kotlin.test.helper
 
 import com.intellij.ide.IdeBundle
-import com.intellij.ide.ui.fullRow
 import com.intellij.openapi.compiler.JavaCompilerBundle
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.State
@@ -18,6 +17,7 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.PanelWithButtons
 import com.intellij.ui.RightAlignedLabelUI
 import com.intellij.ui.ToolbarDecorator
+import com.intellij.ui.layout.fullRow
 import com.intellij.ui.layout.panel
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI

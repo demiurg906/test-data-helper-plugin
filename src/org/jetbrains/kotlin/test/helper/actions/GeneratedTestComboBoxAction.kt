@@ -37,7 +37,7 @@ import org.jetbrains.plugins.gradle.execution.GradleRunnerUtil
 import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestRunConfigurationProducer
 import org.jetbrains.plugins.gradle.service.execution.GradleExternalTaskConfigurationType
 import org.jetbrains.plugins.gradle.service.execution.GradleRunConfiguration
-import org.jetbrains.plugins.gradle.util.GradleExecutionSettingsUtil
+import org.jetbrains.plugins.gradle.util.createTestFilterFrom
 import java.awt.Component
 import java.util.concurrent.Callable
 import javax.swing.*
@@ -230,7 +230,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         private fun collectMethods(baseName: String, path: String, truePath: String): List<PsiMethod> {
             val cache = PsiShortNamesCache.getInstance(project)
 
-            val targetMethodName = "test${baseName.replaceFirstChar { it.toUpperCase() }.replace(".", "_")}"
+            val targetMethodName = "test${baseName.replaceFirstChar { it.uppercaseChar() }.replace(".", "_")}"
             val methods = cache.getMethodsByName(targetMethodName, GlobalSearchScope.allScope(project))
                 .filter { it.hasAnnotation("org.jetbrains.kotlin.test.TestMetadata") }
 
@@ -281,7 +281,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
             for (testMethod in testMethods) {
                 val parentClass = testMethod.parentOfType<PsiClass>() ?: continue
-                testFilters += GradleExecutionSettingsUtil.createTestFilterFrom(parentClass, testMethod, hasSuffix = false)
+                testFilters += createTestFilterFrom(parentClass, testMethod)
                 val virtualFile = testMethod.containingFile?.virtualFile ?: continue
                 GradleTestRunConfigurationProducer.findAllTestsTaskToRun(virtualFile, testMethod.project)
                     .flatMapTo(tasksToRun) { it.tasks }
