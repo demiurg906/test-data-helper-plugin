@@ -3,13 +3,11 @@ package org.jetbrains.kotlin.test.helper.state
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileEditor.impl.text.TextEditorProvider
-import com.intellij.openapi.vfs.LocalFileSystem
+import org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration
 import org.jetbrains.kotlin.test.helper.simpleNameUntilFirstDot
-import java.io.File
-import java.nio.file.Paths
 
 class PreviewEditorState(
-    val baseEditor: TextEditor,
+    private val baseEditor: TextEditor,
     currentPreview: Int
 ) {
     var previewEditors: List<FileEditor> = findPreviewEditors()
@@ -47,10 +45,12 @@ class PreviewEditorState(
     private fun findPreviewEditors(): List<FileEditor> {
         val file = baseEditor.file ?: return emptyList()
         val project = baseEditor.editor.project ?: return emptyList()
+        val configuration = TestDataPathsConfiguration.getInstance(project)
 
         val curFileName = file.simpleNameUntilFirstDot
 
-        val relatedFiles = file.parent.children.filter { it.name.startsWith("$curFileName.") }
+        val relatedFiles = file.parent.children.filter { it.name.startsWith("$curFileName.") } +
+                configuration.findAdditionalRelatedFiles(file, curFileName)
 
         return relatedFiles.map { TextEditorProvider.getInstance().createEditor(project, it) }
     }

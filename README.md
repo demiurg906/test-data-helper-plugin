@@ -27,7 +27,9 @@ Plugin creates enhanced editor for any `.kt` files which belong to directories l
 
 ![Settings](pic/settings.png)
 
-Plugin assumes that if some test file named `someName.kt` then all files which starts with `someName.` belong to this test and shows them in left combobox for split mode.
+The plugin assumes that if some test file named `someName.kt` then all files which start with `someName.` are considered related to this test, and it shows them in the left combobox for split mode.
+The plugin can be configured to search for related files in other places (not just in the same directory as the `.kt` file).
+This can be useful, for example, for displaying the generated code when working on Kotlin/JS tests. 
 
 For detecting test methods for opened file plugin uses following conversion:
 - if test file named `someName.kt` then test method should name `testSomeName` and marked as test (e.g. using `@Test` annotation from JUnit)

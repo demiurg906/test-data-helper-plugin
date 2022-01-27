@@ -6,10 +6,13 @@ import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ex.ComboBoxAction
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.util.io.UniqueNameBuilder
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBLabel
 import org.jetbrains.kotlin.test.helper.state.PreviewEditorState
 import org.jetbrains.kotlin.test.helper.ui.TestDataEditor
 import java.awt.Component
+import java.io.File
 import javax.swing.*
 
 class ChooseAdditionalFileAction(
@@ -20,6 +23,15 @@ class ChooseAdditionalFileAction(
         private const val NO_NAME_PROVIDED = "## no name provided ##"
     }
 
+    private val files: Sequence<VirtualFile>
+        get() = previewEditorState.previewEditors.asSequence().mapNotNull { it.file }
+
+    /**
+     * If two or more files have the same name, we want to display the parts of their full paths that differ.
+     * This is the same thing that IDEA does for tab titles when two files with the same names are opened.
+     */
+    private var uniqueNameBuilder = createUniqueNameBuilder()
+
     private lateinit var model: DefaultComboBoxModel<FileEditor>
     private lateinit var box: ComboBox<FileEditor>
 
@@ -29,7 +41,7 @@ class ChooseAdditionalFileAction(
 
     private fun ComboBox<*>.updateBoxWidth() {
         val fileNameWithMaxLength = previewEditorState.previewEditors
-            .mapNotNull { it.file?.name }
+            .map { it.presentableName }
             .maxByOrNull { it.length }
             ?: NO_NAME_PROVIDED
         setMinimumAndPreferredWidth(getFontMetrics(font).stringWidth(fileNameWithMaxLength) + 80)
@@ -71,12 +83,27 @@ class ChooseAdditionalFileAction(
         }
     }
 
+    private fun createUniqueNameBuilder(): UniqueNameBuilder<VirtualFile>? {
+        val project = testDataEditor.editor.project ?: return null
+        val builder = UniqueNameBuilder<VirtualFile>(project.basePath, File.separator, 40)
+        for (file in files) {
+            builder.addPath(file, file.path)
+        }
+        return builder
+    }
+
     private val FileEditor?.presentableName: String
-        get() = this?.file?.name ?: NO_NAME_PROVIDED
+        get() {
+            val file = this?.file ?: return NO_NAME_PROVIDED
+            if (file.toNioPath().parent == testDataEditor.baseEditor.file?.toNioPath()?.parent)
+                return file.name
+            return uniqueNameBuilder?.getShortPath(file) ?: file.name
+        }
 
     fun updateBoxList() {
         model.removeAllElements()
         model.addAll(previewEditorState.previewEditors)
+        uniqueNameBuilder = createUniqueNameBuilder()
         box.item = previewEditorState.currentPreview
         box.updateBoxWidth()
     }

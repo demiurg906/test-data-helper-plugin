@@ -15,6 +15,7 @@ import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.pom.Navigatable
 import com.intellij.ui.JBSplitter
 import com.intellij.util.ui.JBUI
+import org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration
 import org.jetbrains.kotlin.test.helper.actions.ChooseAdditionalFileAction
 import org.jetbrains.kotlin.test.helper.actions.GeneratedTestComboBoxAction
 import org.jetbrains.kotlin.test.helper.simpleNameUntilFirstDot
@@ -24,7 +25,7 @@ import java.beans.PropertyChangeListener
 import javax.swing.JComponent
 
 class TestDataEditor(
-    private val baseEditor: TextEditor,
+    val baseEditor: TextEditor,
     private val name: String = "Test Data"
 ) : UserDataHolderBase(), TextEditor {
 
@@ -255,15 +256,23 @@ class TestDataEditor(
         }
 
         private fun updatePreviewList(file: VirtualFile) {
-            if (file.belongsToBaseFile()) {
+            if (file.isRelatedToBaseFile()) {
                 previewEditorState.updatePreviewEditors()
                 chooseAdditionalFileAction.updateBoxList()
                 updatePreviewEditor()
             }
         }
 
-        private fun VirtualFile.belongsToBaseFile(): Boolean {
+        private fun VirtualFile.isRelatedToBaseFile(): Boolean {
             if (isDirectory) return false
+
+            val project = baseEditor.editor.project
+            if (project != null) {
+                val configuration = TestDataPathsConfiguration.getInstance(project)
+                if (configuration.isFileRelated(baseFile, this))
+                    return true
+            }
+
             if (parent != baseFile.parent) return false
             return baseName == this.simpleNameUntilFirstDot
         }

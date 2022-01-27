@@ -2,6 +2,9 @@
 
 # Changelog
 
+## 0.0.16
+- Support specifying search paths for additional related files.
+
 ## 0.0.15
 - Migrate plugin to 213 platform
 
