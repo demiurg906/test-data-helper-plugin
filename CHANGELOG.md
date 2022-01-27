@@ -2,6 +2,9 @@
 
 # Changelog
 
+## 0.0.15
+- Migrate plugin to 213 platform
+
 ## 0.0.14
 - Fix `UninitializedPropertyAccessException` on 212 platform
 
