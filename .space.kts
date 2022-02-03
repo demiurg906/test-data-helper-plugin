@@ -5,6 +5,9 @@
 */
 
 job("Publish Plugin") {
+    startOn {
+        gitPush { enabled = false }
+    }
     container(displayName = "Run publish script", image = "gradle") {
         env["PUBLISH_TOKEN"] = Secrets("publish_token")
 
