@@ -93,7 +93,8 @@ class TestDataPathsConfiguration : PersistentStateComponent<TestDataPathsConfigu
                 for (searchPath in searchPaths) {
                     val actualSearchPath = searchPath.replace(
                         "\$TEST_DATA_FILE\$",
-                        baseFilePath.relativeTo(testDataSubdirPath).parent.resolve(simpleNameUntilFirstDot).pathString
+                        (baseFilePath.relativeTo(testDataSubdirPath).parent ?: Path("."))
+                            .resolve(simpleNameUntilFirstDot).pathString
                     ).trim()
 
                     if (run(actualSearchPath))
