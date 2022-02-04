@@ -40,3 +40,5 @@ Plugin searches for all methods in project which satisfy those conditions and cr
 - _Reload_ button runs detection of test methods again. This can be useful if you add new test method after opening test data file
 - _Run all_ button runs gradle command which executes all found test methods
 <!-- Plugin description end -->
+
+This plugin hosted in custom repository, so if you want to receive automatic updates please add `https://plugins.jetbrains.com/plugins/bootstrap/6954` to custom repositories in _Plugins_ -> _Manage Plugin Repositories_ 
