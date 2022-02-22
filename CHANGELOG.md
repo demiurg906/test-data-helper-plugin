@@ -2,6 +2,9 @@
 
 # Changelog
 
+## 0.0.18
+- Fix searching for additional related files when $TEST_DATA_FILE$ doesn't contain subdirectories.
+
 ## 0.0.17
 - Fix an NPE that occured sometimes when searching for additional related files.
 
