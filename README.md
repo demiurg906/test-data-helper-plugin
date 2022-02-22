@@ -41,7 +41,7 @@ Plugin searches for all methods in project which satisfy those conditions and cr
 - _Run all_ button runs gradle command which executes all found test methods
 <!-- Plugin description end -->
 
-This plugin hosted in custom repository, so if you want to receive automatic updates please add this repository to _Settings_ -> _Plugins_ -> _Manage Plugin Repositories_
+This plugin is hosted in a custom repository, so if you want to receive automatic updates please add this repository to _Settings_ -> _Plugins_ -> _Manage Plugin Repositories_
 
 ```
 https://teamcity.jetbrains.com/guestAuth/app/rest/builds/buildType:(id:Kotlin_KotlinCompilerTestHelper_BuildPlugin),status:success,count:1/artifacts/content/updatePlugins.xml
