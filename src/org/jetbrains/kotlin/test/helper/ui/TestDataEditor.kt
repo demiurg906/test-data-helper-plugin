@@ -14,11 +14,10 @@ import com.intellij.openapi.vfs.*
 import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.pom.Navigatable
 import com.intellij.ui.JBSplitter
+import com.intellij.util.SingleAlarm
 import com.intellij.util.ui.JBUI
-import org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration
 import org.jetbrains.kotlin.test.helper.actions.ChooseAdditionalFileAction
 import org.jetbrains.kotlin.test.helper.actions.GeneratedTestComboBoxAction
-import org.jetbrains.kotlin.test.helper.simpleNameUntilFirstDot
 import org.jetbrains.kotlin.test.helper.state.PreviewEditorState
 import java.beans.PropertyChangeEvent
 import java.beans.PropertyChangeListener
@@ -240,41 +239,24 @@ class TestDataEditor(
     }
 
     private inner class TestDataFileUpdateListener : VirtualFileListener {
-        private val baseFile = baseEditor.file!!
-        private val baseName = baseFile.simpleNameUntilFirstDot
+        private val updateAlarm = SingleAlarm(this::updatePreviewList, 500)
 
         override fun fileCreated(event: VirtualFileEvent) {
-            updatePreviewList(event.file)
+            updateAlarm.cancelAndRequest()
         }
 
         override fun fileDeleted(event: VirtualFileEvent) {
-            updatePreviewList(event.file)
+            updateAlarm.cancelAndRequest()
         }
 
         override fun fileMoved(event: VirtualFileMoveEvent) {
-            updatePreviewList(event.file)
+            updateAlarm.cancelAndRequest()
         }
 
-        private fun updatePreviewList(file: VirtualFile) {
-            if (file.isRelatedToBaseFile()) {
-                previewEditorState.updatePreviewEditors()
-                chooseAdditionalFileAction.updateBoxList()
-                updatePreviewEditor()
-            }
-        }
-
-        private fun VirtualFile.isRelatedToBaseFile(): Boolean {
-            if (isDirectory) return false
-
-            val project = baseEditor.editor.project
-            if (project != null) {
-                val configuration = TestDataPathsConfiguration.getInstance(project)
-                if (configuration.isFileRelated(baseFile, this))
-                    return true
-            }
-
-            if (parent != baseFile.parent) return false
-            return baseName == this.simpleNameUntilFirstDot
+        private fun updatePreviewList() {
+            previewEditorState.updatePreviewEditors()
+            chooseAdditionalFileAction.updateBoxList()
+            updatePreviewEditor()
         }
     }
 

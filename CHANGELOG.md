@@ -2,6 +2,9 @@
 
 # Changelog
 
+## 0.0.19
+- Fixed an issue when "Available files" combo box didn't update until the editor was closed and reopened again.
+
 ## 0.0.18
 - Fix searching for additional related files when $TEST_DATA_FILE$ doesn't contain subdirectories.
 
