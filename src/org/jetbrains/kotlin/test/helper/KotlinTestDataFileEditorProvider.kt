@@ -12,8 +12,12 @@ import java.io.File
 import java.nio.file.Paths
 
 class KotlinTestDataFileEditorProvider: AsyncFileEditorProvider {
+    companion object {
+        private val supportedExtensions = listOf("kt", "kts", "args")
+    }
+
     override fun accept(project: Project, file: VirtualFile): Boolean {
-        if (file.fileType != KotlinFileType.INSTANCE) return false
+        if (file.extension !in supportedExtensions) return false
         val configuration = TestDataPathsConfiguration.getInstance(project)
         val filePath = file.path
         return configuration.testDataFiles.any { filePath.startsWith(it) }
