@@ -44,6 +44,7 @@ class PreviewEditorState(
 
     private fun findPreviewEditors(): List<FileEditor> {
         val file = baseEditor.file ?: return emptyList()
+        if (!file.isValid) return emptyList()
         val project = baseEditor.editor.project ?: return emptyList()
         val configuration = TestDataPathsConfiguration.getInstance(project)
 
