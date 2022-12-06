@@ -32,24 +32,12 @@ class ChooseAdditionalFileAction(
      */
     private var uniqueNameBuilder = createUniqueNameBuilder()
 
-    private lateinit var model: DefaultComboBoxModel<FileEditor>
-    private lateinit var box: ComboBox<FileEditor>
-
-    override fun createPopupActionGroup(button: JComponent): DefaultActionGroup {
-        return DefaultActionGroup()
+    private val model: DefaultComboBoxModel<FileEditor> by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        DefaultComboBoxModel(previewEditorState.previewEditors.toTypedArray())
     }
 
-    private fun ComboBox<*>.updateBoxWidth() {
-        val fileNameWithMaxLength = previewEditorState.previewEditors
-            .map { it.presentableName }
-            .maxByOrNull { it.length }
-            ?: NO_NAME_PROVIDED
-        setMinimumAndPreferredWidth(getFontMetrics(font).stringWidth(fileNameWithMaxLength) + 80)
-    }
-
-    override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
-        model = DefaultComboBoxModel(previewEditorState.previewEditors.toTypedArray())
-        box = ComboBox(model).apply {
+    private val box: ComboBox<FileEditor> by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        ComboBox(model).apply {
             item = previewEditorState.currentPreview
             updateBoxWidth()
             addActionListener {
@@ -73,7 +61,21 @@ class ChooseAdditionalFileAction(
             }
             putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true)
         }
+    }
 
+    override fun createPopupActionGroup(button: JComponent): DefaultActionGroup {
+        return DefaultActionGroup()
+    }
+
+    private fun ComboBox<*>.updateBoxWidth() {
+        val fileNameWithMaxLength = previewEditorState.previewEditors
+            .map { it.presentableName }
+            .maxByOrNull { it.length }
+            ?: NO_NAME_PROVIDED
+        setMinimumAndPreferredWidth(getFontMetrics(font).stringWidth(fileNameWithMaxLength) + 80)
+    }
+
+    override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
         val label = JBLabel("Available files: ")
 
         return JPanel().apply {
