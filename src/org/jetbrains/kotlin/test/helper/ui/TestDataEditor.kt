@@ -253,6 +253,10 @@ class TestDataEditor(
         }
 
         private fun updatePreviewList() {
+            if (baseEditor.editor.project?.isDisposed == true) {
+                updateAlarm.cancel()
+                return
+            }
             previewEditorState.updatePreviewEditors()
             chooseAdditionalFileAction.updateBoxList()
             updatePreviewEditor()
