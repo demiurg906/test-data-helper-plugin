@@ -74,18 +74,17 @@ class TestDataEditor(
     }
 
     private fun createFileChooserToolbar(): ActionToolbar {
+        chooseAdditionalFileAction = ChooseAdditionalFileAction(this, previewEditorState)
         return ActionManager
             .getInstance()
             .createActionToolbar(
                 ActionPlaces.TEXT_EDITOR_WITH_PREVIEW,
-                DefaultActionGroup(createPreviewActionGroup()),
+                DefaultActionGroup(
+                    chooseAdditionalFileAction,
+                    chooseAdditionalFileAction.diffAction
+                ),
                 true
             )
-    }
-
-    private fun createPreviewActionGroup(): ActionGroup {
-        chooseAdditionalFileAction = ChooseAdditionalFileAction(this, previewEditorState)
-        return DefaultActionGroup(chooseAdditionalFileAction)
     }
 
     fun updatePreviewEditor() {

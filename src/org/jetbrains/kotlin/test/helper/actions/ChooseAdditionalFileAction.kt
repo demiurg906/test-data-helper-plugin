@@ -1,6 +1,12 @@
 package org.jetbrains.kotlin.test.helper.actions
 
+import com.intellij.diff.actions.BaseShowDiffAction
+import com.intellij.diff.actions.CompareFilesAction
+import com.intellij.diff.chains.DiffRequestChain
+import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.laf.darcula.DarculaUIUtil
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ex.ComboBoxAction
@@ -34,6 +40,10 @@ class ChooseAdditionalFileAction(
 
     private val model: DefaultComboBoxModel<FileEditor> by lazy(LazyThreadSafetyMode.PUBLICATION) {
         DefaultComboBoxModel(previewEditorState.previewEditors.toTypedArray())
+    }
+
+    val diffAction by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        ShowDiffAction()
     }
 
     private val box: ComboBox<FileEditor> by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -108,5 +118,27 @@ class ChooseAdditionalFileAction(
         uniqueNameBuilder = createUniqueNameBuilder()
         box.item = previewEditorState.currentPreview
         box.updateBoxWidth()
+    }
+
+    inner class ShowDiffAction : AnAction(
+        "Show Diff",
+        "Show diff between base and additional files",
+        AllIcons.Actions.Diff
+    ) {
+        override fun actionPerformed(e: AnActionEvent) {
+            val delegateAction = object : CompareFilesAction() {
+                override fun getDiffRequestChain(e: AnActionEvent): DiffRequestChain? {
+                    val originalFile = testDataEditor.file ?: return null
+                    val secondFile = previewEditorState.currentPreview.file ?: return null
+                    return BaseShowDiffAction.createMutableChainFromFiles(
+                        e.project,
+                        originalFile,
+                        secondFile,
+                        null
+                    )
+                }
+            }
+            delegateAction.actionPerformed(e)
+        }
     }
 }
