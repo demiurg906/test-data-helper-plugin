@@ -33,7 +33,6 @@ import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.SlowOperations
 import com.intellij.util.concurrency.AppExecutorUtil
-import org.jetbrains.kotlin.utils.addToStdlib.firstNotNullResult
 import org.jetbrains.plugins.gradle.execution.GradleRunnerUtil
 import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestRunConfigurationProducer
 import org.jetbrains.plugins.gradle.service.execution.GradleExternalTaskConfigurationType
@@ -139,11 +138,11 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             runAllTestsAction.computeTasksToRun(testMethods)
             logger.info("methods collected")
 
-            topLevelDirectory = testMethods.firstNotNullResult { method ->
+            topLevelDirectory = testMethods.firstNotNullOfOrNull { method ->
                 method.parentsOfType(PsiClass::class.java)
                     .toList()
                     .asReversed()
-                    .firstNotNullResult { it.extractTestMetadataValue() }
+                    .firstNotNullOfOrNull { it.extractTestMetadataValue() }
             }
 
             val ex = TestRunLineMarkerProvider()
