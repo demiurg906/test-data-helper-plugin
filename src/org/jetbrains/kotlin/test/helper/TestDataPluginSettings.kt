@@ -25,9 +25,18 @@ import com.intellij.ui.table.JBTable
 import com.intellij.util.execution.ParametersListUtil
 import com.intellij.util.ui.JBUI
 import java.awt.Component
-import java.util.*
-import javax.swing.*
-import javax.swing.table.*
+import java.util.Arrays
+import javax.swing.AbstractCellEditor
+import javax.swing.DefaultCellEditor
+import javax.swing.JButton
+import javax.swing.JComponent
+import javax.swing.JTable
+import javax.swing.ListSelectionModel
+import javax.swing.table.AbstractTableModel
+import javax.swing.table.DefaultTableCellRenderer
+import javax.swing.table.TableCellEditor
+import javax.swing.table.TableCellRenderer
+import javax.swing.table.TableModel
 import kotlin.io.path.Path
 import kotlin.io.path.pathString
 import kotlin.io.path.relativeTo
@@ -106,7 +115,6 @@ class TestDataPathsConfiguration : PersistentStateComponent<TestDataPathsConfigu
         }
         return false
     }
-
 
     fun isFileRelated(baseFile: VirtualFile, fileToCheck: VirtualFile): Boolean =
         searchRelatedFiles(baseFile, baseFile.simpleNameUntilFirstDot) { searchPattern ->
@@ -244,7 +252,6 @@ class TestDataPathsConfigurable(private val project: Project) : BoundConfigurabl
                     val path = aValue as String
                     val newFile = fileSystem.findFileByPath(path) ?: return
                     testDataFiles[row] = newFile
-
                 }
             }
             myExcludedTable = JBTable(dataModel).apply {
@@ -366,7 +373,7 @@ class TestDataPathsConfigurable(private val project: Project) : BoundConfigurabl
     }
 }
 
-private abstract class TestDataPluginSettingsPanel(private val project: Project): PanelWithButtons() {
+private abstract class TestDataPluginSettingsPanel(private val project: Project) : PanelWithButtons() {
 
     companion object {
         private val fileChooserDescriptor: FileChooserDescriptor = FileChooserDescriptor(
@@ -475,7 +482,7 @@ private abstract class TestDataPluginSettingsPanel(private val project: Project)
     }
 }
 
-private class ExpandableCellEditor: AbstractCellEditor(), TableCellEditor {
+private class ExpandableCellEditor : AbstractCellEditor(), TableCellEditor {
 
     private val expandableTextField = ExpandableTextField(ParametersListUtil::parse, ParametersListUtil::join)
 
