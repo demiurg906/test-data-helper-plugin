@@ -1,15 +1,13 @@
 package org.jetbrains.kotlin.test.helper
 
-import com.intellij.openapi.fileEditor.*
+import com.intellij.openapi.fileEditor.AsyncFileEditorProvider
+import com.intellij.openapi.fileEditor.FileEditor
+import com.intellij.openapi.fileEditor.FileEditorPolicy
+import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileEditor.impl.text.TextEditorProvider
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.io.FileUtil
-import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
-import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.test.helper.ui.TestDataEditor
-import java.io.File
-import java.nio.file.Paths
 
 class KotlinTestDataFileEditorProvider: AsyncFileEditorProvider {
     companion object {
