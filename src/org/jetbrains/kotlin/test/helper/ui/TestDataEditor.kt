@@ -4,10 +4,11 @@ import com.intellij.codeHighlighting.BackgroundEditorHighlighter
 import com.intellij.icons.AllIcons
 import com.intellij.ide.structureView.StructureViewBuilder
 import com.intellij.ide.util.PropertiesComponent
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.*
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Pair
 import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.*
@@ -30,13 +31,15 @@ class TestDataEditor(
 
     init {
         baseEditor.file?.fileSystem?.let { registerListener(it) }
+        Disposer.register(this, baseEditor)
     }
 
     // ------------------------------------- components -------------------------------------
 
     private val previewEditorState: PreviewEditorState = PreviewEditorState(
         baseEditor,
-        PropertiesComponent.getInstance().getValue(lastUsedPreviewPropertyName)?.toIntOrNull() ?: 0
+        PropertiesComponent.getInstance().getValue(lastUsedPreviewPropertyName)?.toIntOrNull() ?: 0,
+        this,
     )
 
     private lateinit var editorViewMode: EditorViewMode
@@ -234,7 +237,9 @@ class TestDataEditor(
 
     private fun registerListener(fileSystem: VirtualFileSystem) {
         val listener = TestDataFileUpdateListener()
-        fileSystem.addVirtualFileListener(listener) { fileSystem.removeVirtualFileListener(listener) }
+        val disposable = Disposable { fileSystem.removeVirtualFileListener(listener) }
+        Disposer.register(this, disposable)
+        fileSystem.addVirtualFileListener(listener, disposable)
     }
 
     private inner class TestDataFileUpdateListener : VirtualFileListener {
@@ -282,11 +287,6 @@ class TestDataEditor(
     }
 
     override fun dispose() {
-        val editorFactory = EditorFactory.getInstance()
-        editorFactory.releaseEditor(baseEditor.editor)
-        previewEditorState.previewEditors.forEach { previewEditor ->
-            (previewEditor as? TextEditor)?.editor?.let { editorFactory.releaseEditor(it) }
-        }
     }
 
     override fun selectNotify() {

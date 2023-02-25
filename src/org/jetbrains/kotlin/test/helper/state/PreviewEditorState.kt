@@ -1,14 +1,17 @@
 package org.jetbrains.kotlin.test.helper.state
 
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileEditor.impl.text.TextEditorProvider
+import com.intellij.openapi.util.Disposer
 import org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration
 import org.jetbrains.kotlin.test.helper.simpleNameUntilFirstDot
 
 class PreviewEditorState(
     private val baseEditor: TextEditor,
-    currentPreview: Int
+    currentPreview: Int,
+    private val parent: Disposable,
 ) {
     var previewEditors: List<FileEditor> = findPreviewEditors()
         private set
@@ -53,6 +56,6 @@ class PreviewEditorState(
         val relatedFiles = file.parent.children.filter { it.name.startsWith("$curFileName.") } +
                 configuration.findAdditionalRelatedFiles(file, curFileName)
 
-        return relatedFiles.map { TextEditorProvider.getInstance().createEditor(project, it) }
+        return relatedFiles.map { TextEditorProvider.getInstance().createEditor(project, it).also { Disposer.register(parent, it) } }
     }
 }
