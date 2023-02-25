@@ -86,8 +86,6 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             updateWidth()
         }
 
-        state.updateTestsList()
-
         val label = JBLabel("Tests: ")
 
         return JPanel().apply {
