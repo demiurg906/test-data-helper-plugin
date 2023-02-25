@@ -19,7 +19,12 @@ import org.jetbrains.kotlin.test.helper.state.PreviewEditorState
 import org.jetbrains.kotlin.test.helper.ui.TestDataEditor
 import java.awt.Component
 import java.io.File
-import javax.swing.*
+import javax.swing.BoxLayout
+import javax.swing.DefaultComboBoxModel
+import javax.swing.DefaultListCellRenderer
+import javax.swing.JComponent
+import javax.swing.JList
+import javax.swing.JPanel
 
 class ChooseAdditionalFileAction(
     private val testDataEditor: TestDataEditor,
