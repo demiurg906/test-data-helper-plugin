@@ -207,7 +207,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                 val debugTestAction: AnAction = DelegatingAction(group[1], AllIcons.Actions.StartDebugger)
 
                 topLevelClass.name!! to listOf(runTestAction, debugTestAction)
-            }
+            }.sortedBy { it.first }
         }
 
         private fun updateUiAccordingCollectedTests(classAndActions: List<Pair<String, List<AnAction>>>) {
