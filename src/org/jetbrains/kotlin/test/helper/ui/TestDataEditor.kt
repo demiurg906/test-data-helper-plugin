@@ -125,7 +125,7 @@ class TestDataEditor(
     private fun createTestRunToolbar(): ActionToolbar {
         val generatedTestComboBoxAction = GeneratedTestComboBoxAction(baseEditor)
 
-        val reloadGeneratedTestsAction = object : AnAction(AllIcons.Actions.Refresh) {
+        val reloadGeneratedTestsAction = object : AnAction("Reload Tests", "Reload Tests", AllIcons.Actions.Refresh) {
             override fun actionPerformed(e: AnActionEvent) {
                 generatedTestComboBoxAction.state.updateTestsList()
             }
