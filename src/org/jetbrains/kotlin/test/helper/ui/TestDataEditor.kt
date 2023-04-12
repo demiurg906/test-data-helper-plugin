@@ -17,6 +17,7 @@ import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.fileEditor.FileEditorStateLevel
 import com.intellij.openapi.fileEditor.SplitEditorToolbar
 import com.intellij.openapi.fileEditor.TextEditor
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Pair
 import com.intellij.openapi.util.UserDataHolderBase
@@ -129,6 +130,12 @@ class TestDataEditor(
                 generatedTestComboBoxAction.state.updateTestsList()
             }
         }
+
+        baseEditor.editor.project?.messageBus
+                ?.connect(this)
+                ?.subscribe(DumbService.DUMB_MODE, object : DumbService.DumbModeListener {
+                    override fun exitDumbMode() = generatedTestComboBoxAction.state.updateTestsList()
+                })
 
         return ActionManager
             .getInstance()
