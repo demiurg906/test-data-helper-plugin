@@ -191,20 +191,18 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                     }
                 }
 
-                class DelegatingAction(val delegate: AnAction, val icon: Icon) : AnAction() {
+                class DelegatingAction(val delegate: AnAction, icon: Icon, text: String) : AnAction(text, topLevelClass.name, icon) {
                     override fun actionPerformed(e: AnActionEvent) {
                         delegate.actionPerformed(e)
                     }
 
                     override fun update(e: AnActionEvent) {
                         delegate.update(e)
-                        e.presentation.icon = icon
-                        e.presentation.description = topLevelClass.name!!
                     }
                 }
 
-                val runTestAction = DelegatingAction(group[0], AllIcons.Actions.Execute)
-                val debugTestAction: AnAction = DelegatingAction(group[1], AllIcons.Actions.StartDebugger)
+                val runTestAction = DelegatingAction(group[0], AllIcons.Actions.Execute, "Run")
+                val debugTestAction = DelegatingAction(group[1], AllIcons.Actions.StartDebugger, "Debug")
 
                 topLevelClass.name!! to listOf(runTestAction, debugTestAction)
             }.sortedBy { it.first }
