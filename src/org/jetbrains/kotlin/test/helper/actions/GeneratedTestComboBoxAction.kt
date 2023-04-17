@@ -283,7 +283,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                 testFilters += createTestFilterFrom(parentClass, testMethod)
                 val virtualFile = testMethod.containingFile?.virtualFile ?: continue
                 val allTasks = GradleTestRunConfigurationProducer.findAllTestsTaskToRun(virtualFile, testMethod.project).flatMap { it.tasks }
-                val filteredTasks = allTasks.map {
+                val testTasksWithGroup = allTasks.map {
                     val group = it.substringBeforeLast(":")
                     val name = it.substringAfterLast(":")
                     group to name
@@ -291,8 +291,10 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                     keySelector = { it.first },
                     valueTransform = { it.second }
                 ).mapValues { (_, names) -> names.minByOrNull { it.length }!! }
-                    .map { (group, name) -> "$group:$name" }
-                tasksToRun += filteredTasks
+                for ((group, name) in testTasksWithGroup) {
+                    tasksToRun += "$group:cleanTest"
+                    tasksToRun += "$group:$name"
+                }
             }
         }
 
