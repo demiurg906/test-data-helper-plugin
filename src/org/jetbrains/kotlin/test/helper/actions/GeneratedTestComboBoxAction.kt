@@ -272,15 +272,17 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         AllIcons.RunConfigurations.Junit
     ) {
         private val tasksToRun = mutableSetOf<String>()
-        private val testFilters = mutableSetOf<String>()
+        private val taskArguments = mutableSetOf<String>()
 
         fun computeTasksToRun(testMethods: List<PsiMethod>) {
             tasksToRun.clear()
-            testFilters.clear()
+            taskArguments.clear()
+
+            taskArguments += "--continue"
 
             for (testMethod in testMethods) {
                 val parentClass = testMethod.parentOfType<PsiClass>() ?: continue
-                testFilters += createTestFilterFrom(parentClass, testMethod)
+                taskArguments += createTestFilterFrom(parentClass, testMethod)
                 val virtualFile = testMethod.containingFile?.virtualFile ?: continue
                 val allTasks = GradleTestRunConfigurationProducer.findAllTestsTaskToRun(virtualFile, testMethod.project).flatMap { it.tasks }
                 val testTasksWithGroup = allTasks.map {
@@ -310,7 +312,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                 name = "All tests for $fileName"
                 settings.apply {
                     taskNames = tasksToRun.toList()
-                    scriptParameters = testFilters.joinToString(" ")
+                    scriptParameters = taskArguments.joinToString(" ")
                     externalProjectPath = projectPath
                 }
             }
