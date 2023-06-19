@@ -282,7 +282,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
             for (testMethod in testMethods) {
                 val parentClass = testMethod.parentOfType<PsiClass>() ?: continue
-                taskArguments += createTestFilterFrom(parentClass, testMethod)
+                taskArguments += createTestFilterFrom(parentClass, testMethod.name)
                 val virtualFile = testMethod.containingFile?.virtualFile ?: continue
                 val allTasks = GradleTestRunConfigurationProducer.findAllTestsTaskToRun(virtualFile, testMethod.project).flatMap { it.tasks }
                 val testTasksWithGroup = allTasks.map {
