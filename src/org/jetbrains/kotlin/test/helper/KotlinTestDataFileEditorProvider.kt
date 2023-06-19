@@ -7,6 +7,7 @@ import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileEditor.impl.text.TextEditorProvider
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.util.application
 import org.jetbrains.kotlin.test.helper.ui.TestDataEditor
 
 class KotlinTestDataFileEditorProvider: AsyncFileEditorProvider {
@@ -22,7 +23,7 @@ class KotlinTestDataFileEditorProvider: AsyncFileEditorProvider {
     }
 
     override fun createEditor(project: Project, file: VirtualFile): FileEditor {
-        return createEditorAsync(project, file).build()
+        return application.runReadAction<FileEditor> { createEditorAsync(project, file).build() }
     }
 
     override fun getEditorTypeId(): String = "Kotlin TestData Editor"
