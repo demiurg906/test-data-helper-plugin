@@ -2,12 +2,8 @@ package org.jetbrains.kotlin.test.helper.actions
 
 import com.intellij.execution.Location
 import com.intellij.execution.PsiLocation
-import com.intellij.execution.executors.DefaultRunExecutor
-import com.intellij.execution.impl.RunConfigurationLevel
-import com.intellij.execution.impl.RunManagerImpl
-import com.intellij.execution.impl.RunnerAndConfigurationSettingsImpl
-import com.intellij.execution.runners.ExecutionUtil
 import com.intellij.icons.AllIcons
+import com.intellij.ide.actions.runAnything.RunAnythingAction
 import com.intellij.ide.ui.laf.darcula.DarculaUIUtil
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -19,7 +15,6 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.TextEditor
-import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.psi.PsiClass
@@ -33,14 +28,18 @@ import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.SlowOperations
 import com.intellij.util.concurrency.AppExecutorUtil
-import org.jetbrains.plugins.gradle.execution.GradleRunnerUtil
+import org.jetbrains.plugins.gradle.action.GradleExecuteTaskAction
 import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestRunConfigurationProducer
-import org.jetbrains.plugins.gradle.service.execution.GradleExternalTaskConfigurationType
-import org.jetbrains.plugins.gradle.service.execution.GradleRunConfiguration
 import org.jetbrains.plugins.gradle.util.createTestFilterFrom
 import java.awt.Component
 import java.util.concurrent.Callable
-import javax.swing.*
+import javax.swing.BoxLayout
+import javax.swing.DefaultComboBoxModel
+import javax.swing.DefaultListCellRenderer
+import javax.swing.Icon
+import javax.swing.JComponent
+import javax.swing.JList
+import javax.swing.JPanel
 
 class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction() {
     companion object {
@@ -271,55 +270,42 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         "Run all tests via gradle",
         AllIcons.RunConfigurations.Junit
     ) {
-        private val tasksToRun = mutableSetOf<String>()
-        private val taskArguments = mutableSetOf<String>()
+        private var commandLine = ""
 
         fun computeTasksToRun(testMethods: List<PsiMethod>) {
-            tasksToRun.clear()
-            taskArguments.clear()
+            commandLine = buildString {
+                append("--continue ")
 
-            taskArguments += "--continue"
-
-            for (testMethod in testMethods) {
-                val parentClass = testMethod.parentOfType<PsiClass>() ?: continue
-                taskArguments += createTestFilterFrom(parentClass, testMethod.name)
-                val virtualFile = testMethod.containingFile?.virtualFile ?: continue
-                val allTasks = GradleTestRunConfigurationProducer.findAllTestsTaskToRun(virtualFile, testMethod.project).flatMap { it.tasks }
-                val testTasksWithGroup = allTasks.map {
-                    val group = it.substringBeforeLast(":")
-                    val name = it.substringAfterLast(":")
-                    group to name
-                }.groupBy(
-                    keySelector = { it.first },
-                    valueTransform = { it.second }
-                ).mapValues { (_, names) -> names.minByOrNull { it.length }!! }
-                for ((group, name) in testTasksWithGroup) {
-                    tasksToRun += "$group:cleanTest"
-                    tasksToRun += "$group:$name"
-                }
+                testMethods
+                        .flatMap { testMethod ->
+                            val parentClass = testMethod.parentOfType<PsiClass>() ?: return@flatMap emptyList()
+                            val taskArguments = createTestFilterFrom(parentClass, testMethod.name)
+                            val virtualFile = testMethod.containingFile?.virtualFile ?: return@flatMap emptyList()
+                            val allTasks = GradleTestRunConfigurationProducer.findAllTestsTaskToRun(virtualFile, testMethod.project).flatMap { it.tasks }
+                            allTasks
+                                    .map {
+                                        val group = it.substringBeforeLast(":")
+                                        val name = it.substringAfterLast(":")
+                                        group to name
+                                    }
+                                    .groupBy(keySelector = { it.first }, valueTransform = { it.second })
+                                    .map { (group, names) -> Triple(group, names.minByOrNull { it.length }!!, taskArguments) }
+                        }
+                        .groupBy({ (group, name) -> group to name }) { it.third }
+                        .forEach { (group, name), taskArguments ->
+                            append("$group:cleanTest ")
+                            append("$group:$name ")
+                            for (taskArgument in taskArguments) {
+                                append(taskArgument)
+                                append(' ')
+                            }
+                        }
             }
         }
 
         override fun actionPerformed(e: AnActionEvent) {
             val project = e.project!!
-            val fileName = e.dataContext.getData(PsiLocation.DATA_KEY)?.psiElement?.containingFile?.name ?: "<no name provided>"
-
-            val moduleManager = ModuleManager.getInstance(project)
-            val rootModule = moduleManager.findModuleByName(project.name) ?: return
-            val projectPath = GradleRunnerUtil.resolveProjectPath(rootModule) ?: return
-            val configuration = GradleExternalTaskConfigurationType.getInstance().factory.createTemplateConfiguration(project).apply {
-                require(this is GradleRunConfiguration)
-                name = "All tests for $fileName"
-                settings.apply {
-                    taskNames = tasksToRun.toList()
-                    scriptParameters = taskArguments.joinToString(" ")
-                    externalProjectPath = projectPath
-                }
-            }
-            val runManager = RunManagerImpl.getInstanceImpl(e.project!!)
-            val runnerAndConfigurationSettings = RunnerAndConfigurationSettingsImpl(runManager, configuration, level = RunConfigurationLevel.TEMPORARY)
-            val executor = DefaultRunExecutor.getRunExecutorInstance()
-            ExecutionUtil.runConfiguration(runnerAndConfigurationSettings, executor)
+            GradleExecuteTaskAction.runGradle(project, RunAnythingAction.EXECUTOR_KEY.getData(e.dataContext), project.basePath ?: "", commandLine)
         }
     }
 }
