@@ -1,10 +1,12 @@
 package org.jetbrains.kotlin.test.helper.actions
 
+import com.intellij.codeInsight.daemon.impl.PsiElementListNavigator
 import com.intellij.execution.Location
 import com.intellij.execution.PsiLocation
 import com.intellij.icons.AllIcons
 import com.intellij.ide.actions.runAnything.RunAnythingAction
 import com.intellij.ide.ui.laf.darcula.DarculaUIUtil
+import com.intellij.ide.util.DefaultPsiElementCellRenderer
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
@@ -18,6 +20,7 @@ import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifierListOwner
@@ -45,6 +48,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
     private var box: ComboBox<List<AnAction>>? = null
     private var boxModel: DefaultComboBoxModel<List<AnAction>>? = null
     val runAllTestsAction: RunAllTestsAction = RunAllTestsAction()
+    val goToAction: GoToDeclaration = GoToDeclaration()
 
     val state: State = State().also { it.updateTestsList() }
 
@@ -129,6 +133,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             logger.info("task started")
             val testMethods = collectMethods(name, path!!, truePath)
             runAllTestsAction.computeTasksToRun(testMethods)
+            goToAction.testMethods = testMethods
             logger.info("methods collected")
 
             topLevelDirectory = testMethods.firstNotNullOfOrNull { method ->
@@ -294,6 +299,23 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             currentGroup.addAll(debugAndRunActionLists[currentChosenGroup])
             LastUsedTestService.getInstance(project)?.updateChosenRunner(topLevelDirectory, methodsClassNames[currentChosenGroup])
         }
+    }
+
+    inner class GoToDeclaration: AnAction(
+    "Go To Test Method",
+    "Go to test method declaration",
+    AllIcons.Nodes.Method
+    ) {
+
+        var testMethods: List<PsiMethod> = emptyList()
+
+        override fun actionPerformed(e: AnActionEvent) {
+            PsiElementListNavigator.openTargets<NavigatablePsiElement>(
+                baseEditor.editor, testMethods.toTypedArray(), "", "",
+                DefaultPsiElementCellRenderer(), null
+            )
+        }
+
     }
 
     inner class RunAllTestsAction : AnAction(

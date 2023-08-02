@@ -144,6 +144,7 @@ class TestDataEditor(
                 DefaultActionGroup(
                     generatedTestComboBoxAction,
                     generatedTestComboBoxAction.state.currentGroup,
+                    generatedTestComboBoxAction.goToAction,
                     generatedTestComboBoxAction.runAllTestsAction,
                     reloadGeneratedTestsAction
                 ),
