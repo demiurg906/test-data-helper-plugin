@@ -16,6 +16,7 @@ import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
@@ -32,14 +33,9 @@ import org.jetbrains.plugins.gradle.action.GradleExecuteTaskAction
 import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestRunConfigurationProducer
 import org.jetbrains.plugins.gradle.util.createTestFilterFrom
 import java.awt.Component
+import java.io.File
 import java.util.concurrent.Callable
-import javax.swing.BoxLayout
-import javax.swing.DefaultComboBoxModel
-import javax.swing.DefaultListCellRenderer
-import javax.swing.Icon
-import javax.swing.JComponent
-import javax.swing.JList
-import javax.swing.JPanel
+import javax.swing.*
 
 class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction() {
     companion object {
@@ -234,9 +230,22 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
             val foundMethods: MutableList<PsiMethod> = ArrayList()
             for (method in methods) {
-                val classPath = method.containingClass?.extractTestMetadataValue() ?: continue
+                val containingClass = method.containingClass
+                val classPath = containingClass?.extractTestMetadataValue() ?: continue
+                val classTestDataPath = containingClass.extractTestDataPath()
+                val classRootPath = containingClass.extractTestRootValue()
                 val methodPathPart = method.extractTestMetadataValue() ?: continue
-                val methodPath = "$path/$classPath/$methodPathPart"
+                val methodPathComponents = buildList {
+                    if (classTestDataPath != null) {
+                        add(classTestDataPath)
+                    } else {
+                        add(path)
+                        classRootPath?.let(::add)
+                    }
+                    add(classPath)
+                    add(methodPathPart)
+                }
+                val methodPath = File(methodPathComponents.joinToString("/")).canonicalFile.absolutePath
                 if (methodPath == truePath) {
                     foundMethods.add(method)
                 }
@@ -245,13 +254,35 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         }
 
         private fun PsiModifierListOwner?.extractTestMetadataValue(): String? {
-            return this?.getAnnotation("org.jetbrains.kotlin.test.TestMetadata")
-                ?.parameterList
-                ?.attributes
-                ?.get(0)
-                ?.literalValue
+            return annotationValue("org.jetbrains.kotlin.test.TestMetadata")
         }
 
+        private fun PsiModifierListOwner?.extractTestRootValue(): String? {
+            return annotationValue("org.jetbrains.kotlin.idea.base.test.TestRoot")
+        }
+
+        private fun PsiModifierListOwner?.extractTestDataPath(): String? {
+            var path = annotationValue("com.intellij.testFramework.TestDataPath") ?: return null
+            if (path.contains("\$CONTENT_ROOT")) {
+                val fileIndex = ProjectRootManager.getInstance(project).fileIndex
+                val file = this?.containingFile?.virtualFile ?: return null
+                val contentRoot = fileIndex.getContentRootForFile(file) ?: return null
+                path = path.replace("\$CONTENT_ROOT", contentRoot.path)
+            }
+            if (path.contains("\$PROJECT_ROOT")) {
+                val baseDir = this?.project?.basePath ?: return null
+                path = path.replace("\$PROJECT_ROOT", baseDir)
+            }
+            return path
+        }
+
+        private fun PsiModifierListOwner?.annotationValue(name: String): String? {
+            return this?.getAnnotation(name)
+                ?.parameterList
+                ?.attributes
+                ?.firstOrNull()
+                ?.literalValue
+        }
 
         fun changeDebugAndRun(item: List<AnAction>?) {
             currentGroup.removeAll()
