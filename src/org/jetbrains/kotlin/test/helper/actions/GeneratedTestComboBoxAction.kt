@@ -37,6 +37,7 @@ import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestRunConfigura
 import org.jetbrains.plugins.gradle.util.createTestFilterFrom
 import java.awt.Component
 import java.io.File
+import java.util.*
 import java.util.concurrent.Callable
 import javax.swing.*
 
@@ -235,22 +236,31 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
             val foundMethods: MutableList<PsiMethod> = ArrayList()
             for (method in methods) {
-                val containingClass = method.containingClass
-                val classPath = containingClass?.extractTestMetadataValue() ?: continue
-                val classTestDataPath = containingClass.extractTestDataPath()
-                val classRootPath = containingClass.extractTestRootValue()
-                val methodPathPart = method.extractTestMetadataValue() ?: continue
-                val methodPathComponents = buildList {
-                    if (classTestDataPath != null) {
-                        add(classTestDataPath)
-                    } else {
-                        add(path)
-                        classRootPath?.let(::add)
-                    }
-                    add(classPath)
-                    add(methodPathPart)
+                val psiClass = method.containingClass
+
+                var currentPsiClass = psiClass
+                var testMetaData: String? = null
+                var testDataPath: String? = null
+                while (currentPsiClass != null) {
+                    testMetaData = testMetaData
+                        ?: if (currentPsiClass == psiClass) currentPsiClass.extractTestMetadataValue()
+                         else null
+                    val localTestDataPath: String? = currentPsiClass.extractTestDataPath()
+                    testDataPath = localTestDataPath ?: testDataPath
+                    val containingClass = currentPsiClass.containingClass
+                    currentPsiClass = containingClass
                 }
-                val methodPath = File(methodPathComponents.joinToString("/")).canonicalFile.absolutePath
+
+                val methodPathPart = method.extractTestMetadataValue() ?: continue
+
+                val methodPathComponents = buildList {
+                    add(methodPathPart)
+                    testMetaData?.takeIf(String::isNotEmpty)?.let(::add)
+                    testDataPath?.takeIf(String::isNotEmpty)?.let(::add)
+                    if (testDataPath == null) add(path)
+                }
+                val methodPath = File(methodPathComponents.reversed().joinToString("/"))
+                    .canonicalFile.absolutePath
                 if (methodPath == truePath) {
                     foundMethods.add(method)
                 }
