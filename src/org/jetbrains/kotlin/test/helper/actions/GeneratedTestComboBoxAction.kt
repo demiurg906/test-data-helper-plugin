@@ -132,7 +132,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             val truePath = file.path
             val path = project.basePath
             logger.info("task started")
-            val testMethods = collectMethods(name, path!!, truePath)
+            val testMethods = collectMethods(name, path!!, File(truePath).absolutePath)
             runAllTestsAction.computeTasksToRun(testMethods)
             goToAction.testMethods = testMethods
             logger.info("methods collected")
