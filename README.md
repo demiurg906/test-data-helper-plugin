@@ -46,3 +46,4 @@ This plugin is hosted in a custom repository, so if you want to receive automati
 ```
 https://teamcity.jetbrains.com/guestAuth/app/rest/builds/buildType:(id:Kotlin_KotlinCompilerTestHelper_BuildPlugin),status:success,count:1/artifacts/content/updatePlugins.xml
 ``` 
+
