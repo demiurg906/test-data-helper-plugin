@@ -9,6 +9,7 @@ import com.intellij.ide.ui.laf.darcula.DarculaUIUtil
 import com.intellij.ide.util.DefaultPsiElementCellRenderer
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ex.ComboBoxAction
@@ -53,7 +54,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
     val state: State = State().also { it.updateTestsList() }
 
-    override fun createPopupActionGroup(button: JComponent): DefaultActionGroup {
+    override fun createPopupActionGroup(button: JComponent, dataContext: DataContext): DefaultActionGroup {
         return DefaultActionGroup()
     }
 

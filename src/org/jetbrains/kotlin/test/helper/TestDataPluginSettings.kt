@@ -19,8 +19,7 @@ import com.intellij.ui.PanelWithButtons
 import com.intellij.ui.RightAlignedLabelUI
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.components.fields.ExpandableTextField
-import com.intellij.ui.layout.fullRow
-import com.intellij.ui.layout.panel
+import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
 import com.intellij.util.execution.ParametersListUtil
 import com.intellij.util.ui.JBUI
@@ -163,11 +162,11 @@ class TestDataPathsConfigurable(private val project: Project) : BoundConfigurabl
 
     override fun createPanel(): DialogPanel {
         return panel {
-            fullRow {
-                component(testDataPathPanel)
+            row {
+                cell(testDataPathPanel)
             }
-            fullRow {
-                component(relatedFilesSearchPathsPanel)
+            row {
+                cell(relatedFilesSearchPathsPanel)
             }
         }
     }
