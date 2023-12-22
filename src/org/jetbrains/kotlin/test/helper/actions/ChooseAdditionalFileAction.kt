@@ -3,16 +3,17 @@ package org.jetbrains.kotlin.test.helper.actions
 import com.intellij.diff.actions.BaseShowDiffAction
 import com.intellij.diff.actions.CompareFilesAction
 import com.intellij.diff.chains.DiffRequestChain
+import com.intellij.filename.UniqueNameBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.laf.darcula.DarculaUIUtil
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ex.ComboBoxAction
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.ui.ComboBox
-import com.intellij.openapi.util.io.UniqueNameBuilder
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBLabel
 import org.jetbrains.kotlin.test.helper.state.PreviewEditorState
@@ -78,7 +79,7 @@ class ChooseAdditionalFileAction(
         }
     }
 
-    override fun createPopupActionGroup(button: JComponent): DefaultActionGroup {
+    override fun createPopupActionGroup(button: JComponent, dataContext: DataContext): DefaultActionGroup {
         return DefaultActionGroup()
     }
 
@@ -102,7 +103,7 @@ class ChooseAdditionalFileAction(
 
     private fun createUniqueNameBuilder(): UniqueNameBuilder<VirtualFile>? {
         val project = testDataEditor.editor.project ?: return null
-        val builder = UniqueNameBuilder<VirtualFile>(project.basePath, File.separator, 40)
+        val builder = UniqueNameBuilder<VirtualFile>(project.basePath, File.separator)
         for (file in files) {
             builder.addPath(file, file.path)
         }

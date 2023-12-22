@@ -7,8 +7,10 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.actions.runAnything.RunAnythingAction
 import com.intellij.ide.ui.laf.darcula.DarculaUIUtil
 import com.intellij.ide.util.DefaultPsiElementCellRenderer
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ex.ComboBoxAction
@@ -53,7 +55,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
     val state: State = State().also { it.updateTestsList() }
 
-    override fun createPopupActionGroup(button: JComponent): DefaultActionGroup {
+    override fun createPopupActionGroup(button: JComponent, dataContext: DataContext): DefaultActionGroup {
         return DefaultActionGroup()
     }
 
@@ -178,13 +180,12 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                         }
 
                         override fun update(e: AnActionEvent) {
-                            // Workaround for https://youtrack.jetbrains.com/issue/IDEA-287440
-                            SlowOperations.allowSlowOperations<Nothing> {
-                                it.update(e)
-                            }
+                            it.update(e)
                             e.presentation.isEnabledAndVisible = true
                             e.presentation.description = topLevelClass.name!!
                         }
+
+                        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
                         override fun toString(): String {
                             return "Run/Debug ${topLevelClass.name}"
@@ -200,6 +201,8 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                     override fun update(e: AnActionEvent) {
                         delegate.update(e)
                     }
+
+                    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
                 }
 
                 val runTestAction = DelegatingAction(group[0], AllIcons.Actions.Execute, "Run")
