@@ -32,7 +32,6 @@ import com.intellij.psi.util.parentOfType
 import com.intellij.psi.util.parentsOfType
 import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.components.JBLabel
-import com.intellij.util.SlowOperations
 import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.plugins.gradle.action.GradleExecuteTaskAction
 import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestRunConfigurationProducer
@@ -46,6 +45,7 @@ import javax.swing.*
 class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction() {
     companion object {
         private val logger = Logger.getInstance(GeneratedTestComboBoxAction::class.java)
+        private const val FIR_KT_EXTENSION = ".fir.kt"
     }
 
     private var box: ComboBox<List<AnAction>>? = null
@@ -130,11 +130,16 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
         private fun createActionsForTestRunners(): List<Pair<String, List<AnAction>>> {
             val file = baseEditor.file ?: return emptyList() // TODO: log
-            val name = file.nameWithoutExtension
-            val truePath = file.path
-            val path = project.basePath
+            val projectPath = project.basePath
+            val filePath = File(file.path).absolutePath
+            val normalizedFilePath = if (filePath.endsWith(FIR_KT_EXTENSION)) {
+                filePath.removeSuffix(FIR_KT_EXTENSION) + ".kt"
+            } else {
+                filePath
+            }
+
             logger.info("task started")
-            val testMethods = collectMethods(name, path!!, File(truePath).absolutePath)
+            val testMethods = collectMethods(normalizedFilePath, projectPath!!)
             runAllTestsAction.computeTasksToRun(testMethods)
             goToAction.testMethods = testMethods
             logger.info("methods collected")
@@ -230,9 +235,10 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         }
 
         @OptIn(ExperimentalStdlibApi::class)
-        private fun collectMethods(baseName: String, path: String, truePath: String): List<PsiMethod> {
+        private fun collectMethods(filePath: String, projectPath: String): List<PsiMethod> {
             val cache = PsiShortNamesCache.getInstance(project)
 
+            val baseName = filePath.takeLastWhile { it != '/' && it != '\\' }.substringBeforeLast('.')
             val targetMethodName = "test${baseName.replaceFirstChar { it.uppercaseChar() }.replace(".", "_")}"
             val methods = cache.getMethodsByName(targetMethodName, GlobalSearchScope.allScope(project))
                 .filter { it.hasAnnotation("org.jetbrains.kotlin.test.TestMetadata") }
@@ -260,11 +266,11 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                     add(methodPathPart)
                     testMetaData?.takeIf(String::isNotEmpty)?.let(::add)
                     testDataPath?.takeIf(String::isNotEmpty)?.let(::add)
-                    if (testDataPath == null) add(path)
+                    if (testDataPath == null) add(projectPath)
                 }
                 val methodPath = File(methodPathComponents.reversed().joinToString("/"))
                     .canonicalFile.absolutePath
-                if (methodPath == truePath) {
+                if (methodPath == filePath) {
                     foundMethods.add(method)
                 }
             }
