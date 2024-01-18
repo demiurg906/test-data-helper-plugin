@@ -46,6 +46,8 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
     companion object {
         private val logger = Logger.getInstance(GeneratedTestComboBoxAction::class.java)
         private const val FIR_KT_EXTENSION = ".fir.kt"
+        private const val KT_EXTENSION = ".kt"
+        private const val ARGS_EXTENSION = ".args"
     }
 
     private var box: ComboBox<List<AnAction>>? = null
@@ -130,16 +132,8 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
         private fun createActionsForTestRunners(): List<Pair<String, List<AnAction>>> {
             val file = baseEditor.file ?: return emptyList() // TODO: log
-            val projectPath = project.basePath
-            val filePath = File(file.path).absolutePath
-            val normalizedFilePath = if (filePath.endsWith(FIR_KT_EXTENSION)) {
-                filePath.removeSuffix(FIR_KT_EXTENSION) + ".kt"
-            } else {
-                filePath
-            }
-
             logger.info("task started")
-            val testMethods = collectMethods(normalizedFilePath, projectPath!!)
+            val testMethods = collectMethods(File(file.path).absolutePath, project.basePath!!)
             runAllTestsAction.computeTasksToRun(testMethods)
             goToAction.testMethods = testMethods
             logger.info("methods collected")
@@ -238,7 +232,12 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         private fun collectMethods(filePath: String, projectPath: String): List<PsiMethod> {
             val cache = PsiShortNamesCache.getInstance(project)
 
-            val baseName = filePath.takeLastWhile { it != '/' && it != '\\' }.substringBeforeLast('.')
+            var normalizedFilePath = filePath
+            if (filePath.endsWith(FIR_KT_EXTENSION)) {
+                normalizedFilePath = filePath.removeSuffix(FIR_KT_EXTENSION) + KT_EXTENSION
+            }
+
+            val baseName = normalizedFilePath.takeLastWhile { it != '/' && it != '\\' }.substringBeforeLast('.')
             val targetMethodName = "test${baseName.replaceFirstChar { it.uppercaseChar() }.replace(".", "_")}"
             val methods = cache.getMethodsByName(targetMethodName, GlobalSearchScope.allScope(project))
                 .filter { it.hasAnnotation("org.jetbrains.kotlin.test.TestMetadata") }
@@ -270,7 +269,9 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                 }
                 val methodPath = File(methodPathComponents.reversed().joinToString("/"))
                     .canonicalFile.absolutePath
-                if (methodPath == filePath) {
+                if (methodPath == normalizedFilePath ||
+                    methodPath.endsWith(ARGS_EXTENSION) && methodPath.removeSuffix(ARGS_EXTENSION) + KT_EXTENSION == normalizedFilePath
+                ) {
                     foundMethods.add(method)
                 }
             }
