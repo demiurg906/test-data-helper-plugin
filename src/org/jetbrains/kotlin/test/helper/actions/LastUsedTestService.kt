@@ -8,7 +8,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
-import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.Path
 
 @State(name = "ChosenGeneratedTestCache", storages = [Storage(StoragePathMacros.WORKSPACE_FILE)])
@@ -35,7 +34,6 @@ class LastUsedTestService(val project: Project) : PersistentStateComponent<LastU
         chosenRunnerByDirectory[directory] = runnerName
     }
 
-    @OptIn(ExperimentalPathApi::class)
     fun getLastUsedRunnerForFile(testDataFile: VirtualFile): String? {
         val baseDirectory = project.basePath ?: return null
         val virtualFileManager = VirtualFileManager.getInstance()

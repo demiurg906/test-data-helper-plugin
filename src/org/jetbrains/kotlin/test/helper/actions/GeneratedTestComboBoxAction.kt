@@ -228,7 +228,6 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             logger.info("ui update finished")
         }
 
-        @OptIn(ExperimentalStdlibApi::class)
         private fun collectMethods(baseName: String, path: String, truePath: String): List<PsiMethod> {
             val cache = PsiShortNamesCache.getInstance(project)
 

@@ -12,7 +12,6 @@ import kotlin.io.path.pathString
 
 private val DIGIT_REGEX = """\d+""".toRegex()
 
-@OptIn(ExperimentalStdlibApi::class)
 val VirtualFile.simpleNameUntilFirstDot: String
     get() {
         var processingFirst: Boolean = true
