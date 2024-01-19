@@ -115,12 +115,6 @@ class TestDataPathsConfiguration : PersistentStateComponent<TestDataPathsConfigu
         return false
     }
 
-    fun isFileRelated(baseFile: VirtualFile, fileToCheck: VirtualFile): Boolean =
-        searchRelatedFiles(baseFile, baseFile.simpleNameUntilFirstDot) { searchPattern ->
-            baseFile.toNioPath().fileSystem.getPathMatcher("glob:$searchPattern")
-                .matches(fileToCheck.toNioPath())
-        }
-
     fun findAdditionalRelatedFiles(
         baseFile: VirtualFile,
         simpleNameUntilFirstDot: String,

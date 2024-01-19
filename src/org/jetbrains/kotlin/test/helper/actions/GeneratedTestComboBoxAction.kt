@@ -32,7 +32,6 @@ import com.intellij.psi.util.parentOfType
 import com.intellij.psi.util.parentsOfType
 import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.components.JBLabel
-import com.intellij.util.SlowOperations
 import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.plugins.gradle.action.GradleExecuteTaskAction
 import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestRunConfigurationProducer
@@ -273,10 +272,6 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
         private fun PsiModifierListOwner?.extractTestMetadataValue(): String? {
             return annotationValue("org.jetbrains.kotlin.test.TestMetadata")
-        }
-
-        private fun PsiModifierListOwner?.extractTestRootValue(): String? {
-            return annotationValue("org.jetbrains.kotlin.idea.base.test.TestRoot")
         }
 
         private fun PsiModifierListOwner?.extractTestDataPath(): String? {

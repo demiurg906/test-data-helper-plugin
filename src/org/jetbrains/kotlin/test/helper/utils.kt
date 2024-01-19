@@ -9,25 +9,6 @@ import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 import kotlin.io.path.Path
 import kotlin.io.path.pathString
-import kotlin.properties.ReadWriteProperty
-import kotlin.reflect.KProperty
-
-fun <T : Any> lazyVar(init: () -> T) : ReadWriteProperty<Any?, T> {
-    return object : ReadWriteProperty<Any?, T> {
-        private var value: T? = null
-
-        override fun getValue(thisRef: Any?, property: KProperty<*>): T {
-            if (value == null) {
-                value = init()
-            }
-            return value!!
-        }
-
-        override fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
-            this.value = value
-        }
-    }
-}
 
 private val DIGIT_REGEX = """\d+""".toRegex()
 
