@@ -1,6 +1,7 @@
 package org.jetbrains.kotlin.test.helper.actions
 
 import com.intellij.codeInsight.daemon.impl.PsiElementListNavigator
+import org.jetbrains.kotlin.test.helper.ui.WidthAdjustingPanel
 import com.intellij.execution.Location
 import com.intellij.execution.PsiLocation
 import com.intellij.icons.AllIcons
@@ -62,6 +63,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         val boxModel = DefaultComboBoxModel(state.debugAndRunActionLists.toTypedArray())
         this.boxModel = boxModel
         box = ComboBox(boxModel).apply {
+            isUsePreferredSizeAsMinimum = false
             addActionListener {
                 item?.let { state.changeDebugAndRun(it) }
             }
@@ -89,7 +91,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
         val label = JBLabel("Tests: ")
 
-        return JPanel().apply {
+        return WidthAdjustingPanel().apply {
             layout = BoxLayout(this, BoxLayout.X_AXIS)
             add(label)
             add(box)
