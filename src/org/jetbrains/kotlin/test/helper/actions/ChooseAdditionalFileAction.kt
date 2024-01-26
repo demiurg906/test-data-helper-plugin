@@ -1,5 +1,6 @@
 package org.jetbrains.kotlin.test.helper.actions
 
+import org.jetbrains.kotlin.test.helper.ui.WidthAdjustingPanel
 import com.intellij.diff.actions.BaseShowDiffAction
 import com.intellij.diff.actions.CompareFilesAction
 import com.intellij.diff.chains.DiffRequestChain
@@ -25,7 +26,6 @@ import javax.swing.DefaultComboBoxModel
 import javax.swing.DefaultListCellRenderer
 import javax.swing.JComponent
 import javax.swing.JList
-import javax.swing.JPanel
 
 class ChooseAdditionalFileAction(
     private val testDataEditor: TestDataEditor,
@@ -54,6 +54,7 @@ class ChooseAdditionalFileAction(
 
     private val box: ComboBox<FileEditor> by lazy(LazyThreadSafetyMode.PUBLICATION) {
         ComboBox(model).apply {
+            isUsePreferredSizeAsMinimum = false
             item = previewEditorState.currentPreview
             updateBoxWidth()
             addActionListener {
@@ -94,7 +95,7 @@ class ChooseAdditionalFileAction(
     override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
         val label = JBLabel("Available files: ")
 
-        return JPanel().apply {
+        return WidthAdjustingPanel().apply {
             layout = BoxLayout(this, BoxLayout.X_AXIS)
             add(label)
             add(box)

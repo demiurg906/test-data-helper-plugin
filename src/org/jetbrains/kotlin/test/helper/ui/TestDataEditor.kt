@@ -15,7 +15,6 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileEditorLocation
 import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.fileEditor.FileEditorStateLevel
-import com.intellij.openapi.fileEditor.SplitEditorToolbar
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Disposer
@@ -74,7 +73,7 @@ class TestDataEditor(
         }
     }
 
-    private val myToolbarWrapper: SplitEditorToolbar by lazy {
+    private val myToolbarWrapper: SplitToolbarPanel by lazy {
         fun ActionToolbar.updateConfig() {
             setTargetComponent(splitter)
             setReservePlaceAutoPopupIcon(false)
@@ -82,7 +81,7 @@ class TestDataEditor(
 
         val leftToolbar = createFileChooserToolbar().apply { updateConfig() }
         val rightToolbar = createTestRunToolbar().apply { updateConfig() }
-        SplitEditorToolbar(leftToolbar, rightToolbar)
+        SplitToolbarPanel(leftToolbar, rightToolbar)
     }
 
     enum class EditorViewMode {
