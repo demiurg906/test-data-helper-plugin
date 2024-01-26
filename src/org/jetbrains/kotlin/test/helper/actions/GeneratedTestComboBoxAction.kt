@@ -23,6 +23,7 @@ import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
@@ -129,9 +130,23 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                 .submit(AppExecutorUtil.getAppExecutorService())
         }
 
+        private fun String.indexOfOrLength(symbol: Char, startIndex: Int): Int {
+            val index = indexOf(symbol, startIndex)
+            return if (index > -1) index else length
+        }
+
+        private val String.asPathWithoutAllExtensions: String
+            get() {
+                val indexOfSeparator = lastIndexOf(File.separator)
+                val indexOfFirstExtensionDot = indexOfOrLength('.', indexOfSeparator + 1)
+                return substring(0, indexOfFirstExtensionDot)
+            }
+
+        private val VirtualFile.nameWithoutAllExtensions get() = name.asPathWithoutAllExtensions
+
         private fun createActionsForTestRunners(): List<Pair<String, List<AnAction>>> {
             val file = baseEditor.file ?: return emptyList() // TODO: log
-            val name = file.nameWithoutExtension
+            val name = file.nameWithoutAllExtensions
             val truePath = file.path
             val path = project.basePath
             logger.info("task started")
@@ -237,6 +252,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             val methods = cache.getMethodsByName(targetMethodName, GlobalSearchScope.allScope(project))
                 .filter { it.hasAnnotation("org.jetbrains.kotlin.test.TestMetadata") }
 
+            val truePathWithoutAllExtensions = truePath.asPathWithoutAllExtensions
             val foundMethods: MutableList<PsiMethod> = ArrayList()
             for (method in methods) {
                 val psiClass = method.containingClass
@@ -264,7 +280,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                 }
                 val methodPath = File(methodPathComponents.reversed().joinToString("/"))
                     .canonicalFile.absolutePath
-                if (methodPath == truePath) {
+                if (methodPath.asPathWithoutAllExtensions == truePathWithoutAllExtensions) {
                     foundMethods.add(method)
                 }
             }
