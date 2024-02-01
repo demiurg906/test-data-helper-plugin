@@ -17,4 +17,8 @@
         <projectService serviceImplementation="org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration"/>
         <projectService serviceImplementation="org.jetbrains.kotlin.test.helper.actions.LastUsedTestService"/>
     </extensions>
+
+    <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <supportsKotlinK2Mode/>
+    </extensions>
 </idea-plugin>
