@@ -115,8 +115,8 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
     inner class State {
         val project: Project = baseEditor.editor.project!!
-        val methodsClassNames: MutableList<String> = mutableListOf()
-        val debugAndRunActionLists: MutableList<List<AnAction>> = mutableListOf()
+        var methodsClassNames: List<String> = emptyList()
+        var debugAndRunActionLists: List<List<AnAction>> = emptyList()
         var currentChosenGroup: Int = 0
         val currentGroup = DefaultActionGroup()
         var topLevelDirectory: String? = null
@@ -163,8 +163,6 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             }
 
             val ex = TestRunLineMarkerProvider()
-            debugAndRunActionLists.clear()
-            methodsClassNames.clear()
             return testMethods.mapNotNull { testMethod ->
                 val identifier = testMethod.nameIdentifier ?: return@mapNotNull null
                 val info = ex.getInfo(identifier) ?: return@mapNotNull null
@@ -230,10 +228,8 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
         private fun updateUiAccordingCollectedTests(classAndActions: List<Pair<String, List<AnAction>>>) {
             logger.info("ui update started")
-            for ((className, actions) in classAndActions) {
-                debugAndRunActionLists.add(actions)
-                methodsClassNames.add(className)
-            }
+            debugAndRunActionLists = classAndActions.map { it.second }
+            methodsClassNames = classAndActions.map { it.first }
             val lastUsedRunner = LastUsedTestService.getInstance(project)?.getLastUsedRunnerForFile(baseEditor.file!!)
             methodsClassNames.indexOf(lastUsedRunner).takeIf { it in methodsClassNames.indices }?.let {
                 currentChosenGroup = it
