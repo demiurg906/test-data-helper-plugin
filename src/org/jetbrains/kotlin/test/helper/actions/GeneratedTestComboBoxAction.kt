@@ -1,7 +1,6 @@
 package org.jetbrains.kotlin.test.helper.actions
 
 import com.intellij.codeInsight.daemon.impl.PsiElementListNavigator
-import org.jetbrains.kotlin.test.helper.ui.WidthAdjustingPanel
 import com.intellij.execution.Location
 import com.intellij.execution.PsiLocation
 import com.intellij.icons.AllIcons
@@ -35,14 +34,19 @@ import com.intellij.psi.util.parentsOfType
 import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.concurrency.AppExecutorUtil
+import org.jetbrains.kotlin.test.helper.ui.WidthAdjustingPanel
 import org.jetbrains.plugins.gradle.action.GradleExecuteTaskAction
 import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestRunConfigurationProducer
 import org.jetbrains.plugins.gradle.util.createTestFilterFrom
 import java.awt.Component
 import java.io.File
-import java.util.*
 import java.util.concurrent.Callable
-import javax.swing.*
+import javax.swing.BoxLayout
+import javax.swing.DefaultComboBoxModel
+import javax.swing.DefaultListCellRenderer
+import javax.swing.Icon
+import javax.swing.JComponent
+import javax.swing.JList
 
 class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction() {
     companion object {
@@ -53,6 +57,8 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
     private var boxModel: DefaultComboBoxModel<List<AnAction>>? = null
     val runAllTestsAction: RunAllTestsAction = RunAllTestsAction()
     val goToAction: GoToDeclaration = GoToDeclaration()
+    val runAction = RunAction(0, "Run", AllIcons.Actions.Execute)
+    val debugAction = RunAction(1, "Debug", AllIcons.Actions.StartDebugger)
 
     val state: State = State().also { it.updateTestsList() }
 
@@ -118,11 +124,13 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         var methodsClassNames: List<String> = emptyList()
         var debugAndRunActionLists: List<List<AnAction>> = emptyList()
         var currentChosenGroup: Int = 0
-        val currentGroup = DefaultActionGroup()
         var topLevelDirectory: String? = null
 
         fun updateTestsList() {
             logger.info("task scheduled")
+            methodsClassNames = emptyList()
+            debugAndRunActionLists = emptyList()
+            updateBox(emptyList())
             ReadAction
                 .nonBlocking(Callable { createActionsForTestRunners().also { logger.info("actions created") } })
                 .inSmartMode(project)
@@ -207,23 +215,12 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                     }
                 }
 
-                class DelegatingAction(val delegate: AnAction, icon: Icon, text: String) : AnAction(text, topLevelClass.name, icon) {
-                    override fun actionPerformed(e: AnActionEvent) {
-                        delegate.actionPerformed(e)
-                    }
-
-                    override fun update(e: AnActionEvent) {
-                        delegate.update(e)
-                    }
-
-                    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
-                }
-
-                val runTestAction = DelegatingAction(group[0], AllIcons.Actions.Execute, "Run")
-                val debugTestAction = DelegatingAction(group[1], AllIcons.Actions.StartDebugger, "Debug")
-
-                topLevelClass.name!! to listOf(runTestAction, debugTestAction)
+                topLevelClass.name!! to group
             }.sortedBy { it.first }
+        }
+
+        internal fun executeRunConfigAction(e: AnActionEvent, index: Int) {
+            debugAndRunActionLists.elementAtOrNull(currentChosenGroup)?.elementAtOrNull(index)?.actionPerformed(e)
         }
 
         private fun updateUiAccordingCollectedTests(classAndActions: List<Pair<String, List<AnAction>>>) {
@@ -311,15 +308,26 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         }
 
         fun changeDebugAndRun(item: List<AnAction>?) {
-            currentGroup.removeAll()
             if (item !in debugAndRunActionLists) {
                 logger.info("Actions not in list: $item")
                 return
             }
             currentChosenGroup = debugAndRunActionLists.indexOf(item)
-            currentGroup.addAll(debugAndRunActionLists[currentChosenGroup])
             LastUsedTestService.getInstance(project)?.updateChosenRunner(topLevelDirectory, methodsClassNames[currentChosenGroup])
         }
+    }
+
+    inner class RunAction(private val index: Int, text: String, icon: Icon) : AnAction(text, text, icon) {
+        override fun actionPerformed(e: AnActionEvent) {
+            state.executeRunConfigAction(e, index)
+        }
+
+        override fun update(e: AnActionEvent) {
+            e.presentation.isEnabled = state.currentChosenGroup in state.debugAndRunActionLists.indices
+            super.update(e)
+        }
+
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
     }
 
     inner class GoToDeclaration: AnAction(

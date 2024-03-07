@@ -142,7 +142,8 @@ class TestDataEditor(
                 ActionPlaces.TEXT_EDITOR_WITH_PREVIEW,
                 DefaultActionGroup(
                     generatedTestComboBoxAction,
-                    generatedTestComboBoxAction.state.currentGroup,
+                    generatedTestComboBoxAction.runAction,
+                    generatedTestComboBoxAction.debugAction,
                     generatedTestComboBoxAction.goToAction,
                     generatedTestComboBoxAction.runAllTestsAction,
                     reloadGeneratedTestsAction
