@@ -14,6 +14,7 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ex.ComboBoxAction
 import com.intellij.openapi.fileEditor.FileEditor
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBLabel
@@ -30,7 +31,7 @@ import javax.swing.JList
 class ChooseAdditionalFileAction(
     private val testDataEditor: TestDataEditor,
     private val previewEditorState: PreviewEditorState
-) : ComboBoxAction() {
+) : ComboBoxAction(), DumbAware {
     companion object {
         private const val NO_NAME_PROVIDED = "## no name provided ##"
     }
@@ -131,7 +132,7 @@ class ChooseAdditionalFileAction(
         "Show Diff",
         "Show diff between base and additional files",
         AllIcons.Actions.Diff
-    ) {
+    ), DumbAware {
         override fun actionPerformed(e: AnActionEvent) {
             val delegateAction = object : CompareFilesAction() {
                 override fun getDiffRequestChain(e: AnActionEvent): DiffRequestChain? {

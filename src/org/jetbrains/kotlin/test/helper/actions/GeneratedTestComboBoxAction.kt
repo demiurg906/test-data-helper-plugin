@@ -19,6 +19,7 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.TextEditor
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.ui.ComboBox
@@ -48,7 +49,7 @@ import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JList
 
-class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction() {
+class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction(), DumbAware {
     companion object {
         private val logger = Logger.getInstance(GeneratedTestComboBoxAction::class.java)
     }
@@ -182,7 +183,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                 val topLevelClass = testMethod.parentsOfType<PsiClass>().last()
 
                 val group: List<AnAction> = allActions.take(2).map {
-                    object : AnAction() {
+                    object : AnAction(), DumbAware {
                         override fun actionPerformed(e: AnActionEvent) {
                             val dataContext = SimpleDataContext.builder().apply {
                                 val newLocation = PsiLocation.fromPsiElement(identifier)
@@ -317,7 +318,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         }
     }
 
-    inner class RunAction(private val index: Int, text: String, icon: Icon) : AnAction(text, text, icon) {
+    inner class RunAction(private val index: Int, text: String, icon: Icon) : AnAction(text, text, icon), DumbAware {
         override fun actionPerformed(e: AnActionEvent) {
             state.executeRunConfigAction(e, index)
         }
@@ -334,8 +335,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
     "Go To Test Method",
     "Go to test method declaration",
     AllIcons.Nodes.Method
-    ) {
-
+    ), DumbAware {
         var testMethods: List<PsiMethod> = emptyList()
 
         override fun actionPerformed(e: AnActionEvent) {
@@ -351,7 +351,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         "Run All...",
         "Run all tests via gradle",
         AllIcons.RunConfigurations.Junit
-    ) {
+    ), DumbAware {
         private var commandLine = ""
 
         fun computeTasksToRun(testMethods: List<PsiMethod>) {

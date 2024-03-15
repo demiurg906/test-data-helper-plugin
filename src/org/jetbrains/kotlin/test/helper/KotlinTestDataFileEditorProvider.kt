@@ -5,12 +5,13 @@ import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorPolicy
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileEditor.impl.text.TextEditorProvider
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.application
 import org.jetbrains.kotlin.test.helper.ui.TestDataEditor
 
-class KotlinTestDataFileEditorProvider: AsyncFileEditorProvider {
+class KotlinTestDataFileEditorProvider: AsyncFileEditorProvider, DumbAware {
     companion object {
         private val supportedExtensions = listOf("kt", "kts", "args")
     }

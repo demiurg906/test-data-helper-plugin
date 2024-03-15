@@ -16,6 +16,7 @@ import com.intellij.openapi.fileEditor.FileEditorLocation
 import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.fileEditor.FileEditorStateLevel
 import com.intellij.openapi.fileEditor.TextEditor
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Pair
@@ -124,7 +125,7 @@ class TestDataEditor(
     private fun createTestRunToolbar(): ActionToolbar {
         val generatedTestComboBoxAction = GeneratedTestComboBoxAction(baseEditor)
 
-        val reloadGeneratedTestsAction = object : AnAction("Reload Tests", "Reload Tests", AllIcons.Actions.Refresh) {
+        val reloadGeneratedTestsAction = object : AnAction("Reload Tests", "Reload Tests", AllIcons.Actions.Refresh), DumbAware {
             override fun actionPerformed(e: AnActionEvent) {
                 generatedTestComboBoxAction.state.updateTestsList()
             }
