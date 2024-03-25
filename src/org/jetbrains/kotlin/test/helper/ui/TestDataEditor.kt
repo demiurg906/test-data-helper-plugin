@@ -95,7 +95,7 @@ class TestDataEditor(
         return ActionManager
             .getInstance()
             .createActionToolbar(
-                ActionPlaces.TEXT_EDITOR_WITH_PREVIEW,
+                "TestDataHelperToolbar_left",
                 DefaultActionGroup(
                     chooseAdditionalFileAction,
                     chooseAdditionalFileAction.diffAction
@@ -140,7 +140,7 @@ class TestDataEditor(
         return ActionManager
             .getInstance()
             .createActionToolbar(
-                ActionPlaces.TEXT_EDITOR_WITH_PREVIEW,
+                "TestDataHelperToolbar_right",
                 DefaultActionGroup(
                     generatedTestComboBoxAction,
                     generatedTestComboBoxAction.runAction,
