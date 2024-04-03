@@ -52,6 +52,7 @@ import javax.swing.JList
 class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction(), DumbAware {
     companion object {
         private val logger = Logger.getInstance(GeneratedTestComboBoxAction::class.java)
+        private val testNameReplacementRegex = "[.-]".toRegex()
     }
 
     private var box: ComboBox<List<AnAction>>? = null
@@ -242,7 +243,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         private fun collectMethods(baseName: String, path: String, truePath: String): List<PsiMethod> {
             val cache = PsiShortNamesCache.getInstance(project)
 
-            val targetMethodName = "test${baseName.replaceFirstChar { it.uppercaseChar() }.replace(".", "_")}"
+            val targetMethodName = "test${baseName.replaceFirstChar { it.uppercaseChar() }.replace(testNameReplacementRegex, "_")}"
             val methods = cache.getMethodsByName(targetMethodName, GlobalSearchScope.allScope(project))
                 .filter { it.hasAnnotation("org.jetbrains.kotlin.test.TestMetadata") }
 
