@@ -16,6 +16,11 @@
         <projectConfigurable bundle="messages.MyBundle" instance="org.jetbrains.kotlin.test.helper.TestDataPathsConfigurable"/>
         <projectService serviceImplementation="org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration"/>
         <projectService serviceImplementation="org.jetbrains.kotlin.test.helper.actions.LastUsedTestService"/>
+
+        <!-- For some reason, doesn't work when put into `<extensions defaultExtensionNs="org.jetbrains.kotlin">`. -->
+        <!-- Also, `order="first"` is important somehow. -->
+        <runAnything.executionProvider implementation="org.jetbrains.kotlin.test.helper.runAnything.TestGloballyRunAnythingProvider"
+                                       order="first"/>
     </extensions>
 
     <extensions defaultExtensionNs="org.jetbrains.kotlin">
