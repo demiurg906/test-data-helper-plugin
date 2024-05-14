@@ -12,6 +12,7 @@ This plugin introduces some nice features to make working with compiler tests of
 - Separated view for files related to opened testdata file
 - Ability to run specific generated test, associated with opened testdata file
 - Ability to run all tests associated with opened file
+- Ability to run tests from arbitrary modules given the inclusion filters (`--tests`)
 
 #### Previews
 - Test Data editor
@@ -19,7 +20,6 @@ This plugin introduces some nice features to make working with compiler tests of
   
 - Split view for files related to opened tests
 ![Split view](pic/splitEditor.png)
-
 
 #### Setup
 
@@ -47,3 +47,18 @@ This plugin is hosted in a custom repository, so if you want to receive automati
 https://teamcity.jetbrains.com/guestAuth/app/rest/builds/buildType:(id:Kotlin_KotlinCompilerTestHelper_BuildPlugin),status:success,count:1/artifacts/content/updatePlugins.xml
 ``` 
 
+#### Running Tests from Arbitrary Modules
+
+The plugin adds a Run Anything provider that introduces a command `testGlobally`.
+It accepts a sequence of test filters, finds the relevant modules and then calls their `:test` Gradle tasks with the
+relevant filters.
+
+The syntax is: `testGlobally [--tests <pattern>]*`.
+For example: `testGlobally --tests 'a.b.Test$Sub.testSomething' --tests a.b.*`.
+
+There's a limitation, though: the packages must be fully specified, and only their initial part that doesn't contain
+wildcards will be considered for searching for the relevant modules.
+Also note that specifying a filter without a package (`--tests SomeTestGenerated`) will result in all modules with test
+source sets being called via `:test`.
+The algorithm searches for the relevant module by comparing the package with the directory structure, and empty package
+represents the source set root which is always present for every source set.
