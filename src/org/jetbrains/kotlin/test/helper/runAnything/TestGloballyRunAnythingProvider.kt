@@ -20,6 +20,17 @@ private const val COMMAND = "testGlobally"
 private const val TESTS = "--tests"
 private val QUOTES = listOf('\'', '\"')
 
+private val GRADLE_ARGS = listOf(
+    // Proceed to next tasks if some `:test` fails
+    "--continue",
+    // Suppress possible "No tests found for given includes"
+    "-PignoreTestFailures=true",
+)
+private val TEST_TASK_ARGS = listOf(
+    // Avoid `UP_TO_DATE`...
+    "--rerun",
+)
+
 class TestGloballyRunAnythingProvider : RunAnythingCommandLineProvider() {
     /**
      * Basically a map that transforms the input somehow.
@@ -79,12 +90,12 @@ class TestGloballyRunAnythingProvider : RunAnythingCommandLineProvider() {
 
         val testFiltersFqNames = commandLine.parameters
             .filterIndexed { index, _ -> index.isOdd }
-            .map { it.removeQuotesIfNeeded() }
+            .map { it.removeQuotesIfNeeded().removeJUnitDisplayNameIfNeeded() }
         val packagePathsToFilters = testFiltersFqNames.groupBy(::guessPackagePath)
         val moduleToFilters = mapModulesToRelatedFilters(project, packagePathsToFilters)
 
-        val gradleCommand = listOf("--continue") + moduleToFilters.entries.flatMap { (module, filters) ->
-            listOf(module.gradleSubprojectPath + ":test") + filters.flatMap { listOf(TESTS, it) }
+        val gradleCommand = GRADLE_ARGS + moduleToFilters.entries.flatMap { (module, filters) ->
+            listOf(module.gradleSubprojectPath + ":test") + TEST_TASK_ARGS + filters.flatMap { listOf(TESTS, "'$it'") }
         }
 
         val executor = EXECUTOR_KEY.getData(dataContext)
@@ -187,6 +198,20 @@ class TestGloballyRunAnythingProvider : RunAnythingCommandLineProvider() {
 
         return when {
             firstIndex != 0 || lastIndex != length -> substring(firstIndex, lastIndex)
+            else -> this
+        }
+    }
+
+    /**
+     * A countermeasure for functions like: `my.package.path.MyTest.testSomething()(some random commend)`.
+     * Despite `@DisplayName` is a JUnit annotation, passing this to `--tests` will produce "No tests found
+     * for given includes".
+     */
+    private fun String.removeJUnitDisplayNameIfNeeded(): String {
+        val parenthesesIndex = indexOf('(')
+
+        return when {
+            parenthesesIndex != -1 -> substring(0, parenthesesIndex)
             else -> this
         }
     }
