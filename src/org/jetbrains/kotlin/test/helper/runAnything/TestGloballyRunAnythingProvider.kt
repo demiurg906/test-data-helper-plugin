@@ -151,10 +151,31 @@ class TestGloballyRunAnythingProvider : RunAnythingCommandLineProvider() {
         // In kotlin.git, source roots don't reside in the module directly,
         // but rather in either the `main` or `test` submodules.
         // Note that `tests-gen` roots reside in `test` submodules.
-        get() = ":" + name.removePrefix("kotlin.")
-            .removeSuffix(".tests")
-            .removeSuffix(".test")
-            .replace(".", ":")
+        get() = ":" + nameParts.joinToString(":")
+            .removePrefix("kotlin:")
+            .removeSuffix(":tests")
+            .removeSuffix(":test")
+
+    /**
+     * Returns [`kotlin`, `path`, `to`, `module`]
+     */
+    @Suppress("RecursivePropertyAccessor")
+    private val Module.nameParts: List<String>
+        get() {
+            val allParts = name.split(".").takeIf { it.size >= 2 } ?: return listOf(name)
+            var ownNamePartsCount = 0
+            var parentModule: Module? = null
+
+            while (parentModule == null && ownNamePartsCount < allParts.size) {
+                ownNamePartsCount += 1
+                val parentPrefix = allParts.dropLast(ownNamePartsCount).joinToString(".")
+                val manager = ModuleManager.getInstance(this.project)
+                parentModule = manager.findModuleByName(parentPrefix)
+            }
+
+            val ownNamePart = allParts.takeLast(ownNamePartsCount).joinToString(".")
+            return parentModule?.nameParts.orEmpty() + ownNamePart
+        }
 
     private val VirtualFile.subdirectories get() = children.filter { it.isDirectory }
 
