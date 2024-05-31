@@ -62,3 +62,9 @@ Also note that specifying a filter without a package (`--tests SomeTestGenerated
 source sets being called via `:test`.
 The algorithm searches for the relevant module by comparing the package with the directory structure, and empty package
 represents the source set root which is always present for every source set.
+
+### Build plugin from sources
+
+```shell
+./gradlew buildPlugin # -> ./build/distributions/TestHelper-0.0.19.zip
+```
