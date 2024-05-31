@@ -25,6 +25,12 @@ private val GRADLE_ARGS = listOf(
     "--continue",
     // Suppress possible "No tests found for given includes"
     "-PignoreTestFailures=true",
+    // Native by default (and on TC as well) runs tests in parallel in such a way
+    // that you can't be sure the output of the given test method really belongs
+    // to this specific test.
+    // Because of this, you will see way more failed tests than the actual number
+    // of problematic ones and won't be able to understand what fails and where.
+    "-Pkotlin.internal.native.test.forceStandalone=true",
 )
 private val TEST_TASK_ARGS = listOf(
     // Avoid `UP_TO_DATE`...
