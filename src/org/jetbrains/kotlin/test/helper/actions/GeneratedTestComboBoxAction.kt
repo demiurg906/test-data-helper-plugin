@@ -147,9 +147,18 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
         private val String.asPathWithoutAllExtensions: String
             get() {
-                val indexOfSeparator = lastIndexOf(File.separator)
-                val indexOfFirstExtensionDot = indexOfOrLength('.', indexOfSeparator + 1)
-                return substring(0, indexOfFirstExtensionDot)
+                val path = if (contains(File.separator)) substringBeforeLast(File.separator) else ""
+                val name = substringAfterLast(File.separator)
+
+                val result = buildString {
+                    if (path.isNotEmpty()) {
+                        append(path)
+                        append(File.separator)
+                    }
+
+                    name.split('.').dropLastWhile { !it.all { c -> c.isDigit() } }.joinTo(this, separator = ".")
+                }
+                return result
             }
 
         private val VirtualFile.nameWithoutAllExtensions get() = name.asPathWithoutAllExtensions
