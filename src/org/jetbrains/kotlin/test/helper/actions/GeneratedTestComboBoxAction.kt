@@ -156,7 +156,14 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                         append(File.separator)
                     }
 
-                    name.split('.').dropLastWhile { !it.all { c -> c.isDigit() } }.joinTo(this, separator = ".")
+                    val nameParts = name.split('.').toMutableList()
+                    nameParts.removeAt(nameParts.lastIndex)
+
+                    while (nameParts.size > 1 && !nameParts.last().all { it.isDigit() }) {
+                        nameParts.removeAt(nameParts.lastIndex)
+                    }
+
+                    nameParts.joinTo(this, separator = ".")
                 }
                 return result
             }
