@@ -1,6 +1,7 @@
 package org.jetbrains.kotlin.test.helper.actions
 
 import com.intellij.codeInsight.daemon.impl.PsiElementListNavigator
+import com.intellij.codeInsight.navigation.PsiTargetNavigator
 import com.intellij.execution.Location
 import com.intellij.execution.PsiLocation
 import com.intellij.icons.AllIcons
@@ -356,10 +357,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         var testMethods: List<PsiMethod> = emptyList()
 
         override fun actionPerformed(e: AnActionEvent) {
-            PsiElementListNavigator.openTargets<NavigatablePsiElement>(
-                baseEditor.editor, testMethods.toTypedArray(), "", "",
-                DefaultPsiElementCellRenderer(), null
-            )
+            PsiTargetNavigator { testMethods }.navigate(baseEditor.editor, "")
         }
 
     }
