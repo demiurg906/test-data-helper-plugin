@@ -77,6 +77,7 @@ intellijPlatform {
                     ide(IntelliJPlatformType.IntellijIdeaCommunity, ideVersion)
                 }
         }
+        freeArgs = listOf("-mute", "ForbiddenPluginIdPrefix") // The 'org.jetbrains' prefix is normally not allowed
     }
 }
 
