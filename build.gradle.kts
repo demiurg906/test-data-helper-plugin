@@ -2,6 +2,7 @@ import io.gitlab.arturbosch.detekt.Detekt
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 fun properties(key: String) = project.findProperty(key).toString()
@@ -10,7 +11,7 @@ plugins {
     // Java support
     id("java")
     // Kotlin support
-    id("org.jetbrains.kotlin.jvm") version "1.8.10"
+    id("org.jetbrains.kotlin.jvm") version "2.0.20"
     // gradle-intellij-plugin - read more: https://github.com/JetBrains/gradle-intellij-plugin
     id("org.jetbrains.intellij.platform") version "2.0.1"
     // gradle-changelog-plugin - read more: https://github.com/JetBrains/gradle-changelog-plugin
@@ -100,7 +101,7 @@ tasks {
         targetCompatibility = "17"
     }
     withType<KotlinCompile> {
-        kotlinOptions.jvmTarget = "17"
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
     }
 
     withType<Detekt> {
@@ -137,5 +138,5 @@ sourceSets {
 }
 
 tasks.withType<KotlinCompile>().forEach {
-    it.kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
+    it.compilerOptions.freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn")
 }
