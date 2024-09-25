@@ -1,4 +1,5 @@
 import io.gitlab.arturbosch.detekt.Detekt
+import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -13,7 +14,7 @@ plugins {
     // gradle-intellij-plugin - read more: https://github.com/JetBrains/gradle-intellij-plugin
     id("org.jetbrains.intellij.platform") version "2.0.1"
     // gradle-changelog-plugin - read more: https://github.com/JetBrains/gradle-changelog-plugin
-    id("org.jetbrains.changelog") version "1.3.1"
+    id("org.jetbrains.changelog") version "2.2.1"
     // detekt linter - read more: https://detekt.github.io/detekt/gradle.html
     id("io.gitlab.arturbosch.detekt") version "1.23.7"
     // ktlint linter - read more: https://github.com/JLLeitschuh/ktlint-gradle
@@ -46,7 +47,7 @@ intellijPlatform {
     pluginConfiguration {
         name = properties("pluginName")
         version = properties("pluginVersion")
-        changeNotes = provider { changelog.getLatest().toHTML() }
+        changeNotes = provider { changelog.renderItem(changelog.getLatest(), Changelog.OutputType.HTML) }
 
         // Extract the <!-- Plugin description --> section from README.md and provide for the plugin's manifest
         description = File(projectDir, "README.md").readText().lines().run {
