@@ -138,17 +138,21 @@ class TestDataPathsConfigurable(private val project: Project)
 
     private val configuration: TestDataPathsConfiguration = TestDataPathsConfiguration.getInstance(project)
 
-    private val testDataFiles: MutableList<VirtualFile> = run {
+    private fun resetTestDataFiles(): MutableList<VirtualFile> {
         val fileSystem = VirtualFileManager.getInstance().getFileSystem("file")
-        configuration.testDataFiles.mapNotNullTo(mutableListOf()) { fileSystem.findFileByPath(it) }
+        return configuration.testDataFiles.mapNotNullTo(mutableListOf()) { fileSystem.findFileByPath(it) }
     }
 
-    private val relatedFileSearchPaths: MutableList<Pair<VirtualFile, List<String>>> = run {
+    private var testDataFiles: MutableList<VirtualFile> = resetTestDataFiles()
+
+    private fun resetRelatedFileSearchPaths(): MutableList<Pair<VirtualFile, List<String>>> {
         val fileSystem = VirtualFileManager.getInstance().getFileSystem("file")
-        configuration.relatedFilesSearchPaths.mapNotNullTo(mutableListOf()) { entry ->
+        return configuration.relatedFilesSearchPaths.mapNotNullTo(mutableListOf()) { entry ->
             fileSystem.findFileByPath(entry.key)?.let { Pair(it, entry.value.toList()) }
         }
     }
+
+    private var relatedFileSearchPaths: MutableList<Pair<VirtualFile, List<String>>> = resetRelatedFileSearchPaths()
 
     private val testDataPathPanel: TestDataPathEntriesPanel by lazy {
         TestDataPathEntriesPanel()
@@ -189,7 +193,16 @@ class TestDataPathsConfigurable(private val project: Project)
 
     override fun isModified() = testDataFilesModified() || relatedFilesSearchPathsModified()
 
+    override fun reset() {
+        super.reset()
+        testDataFiles = resetTestDataFiles()
+        relatedFileSearchPaths = resetRelatedFileSearchPaths()
+        (testDataPathPanel.myExcludedTable.model as? AbstractTableModel)?.fireTableDataChanged()
+        (relatedFilesSearchPathsPanel.myExcludedTable.model as? AbstractTableModel)?.fireTableDataChanged()
+    }
+
     override fun apply() {
+        super.apply()
         configuration.loadState(testDataFiles, relatedFileSearchPaths)
     }
 
