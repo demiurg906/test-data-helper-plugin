@@ -11,9 +11,12 @@
     <depends>com.intellij.gradle</depends>
     <depends>org.jetbrains.plugins.gradle</depends>
 
+    <resource-bundle>messages.MyBundle</resource-bundle>
+
     <extensions defaultExtensionNs="com.intellij">
         <fileEditorProvider implementation="org.jetbrains.kotlin.test.helper.KotlinTestDataFileEditorProvider"/>
-        <projectConfigurable bundle="messages.MyBundle" instance="org.jetbrains.kotlin.test.helper.TestDataPathsConfigurable"/>
+        <projectConfigurable bundle="messages.MyBundle" instance="org.jetbrains.kotlin.test.helper.TestDataPathsConfigurable"
+                             key="pluginSettingsDisplayName"/>
         <projectService serviceImplementation="org.jetbrains.kotlin.test.helper.actions.LastUsedTestService"/>
 
         <!-- For some reason, doesn't work when put into `<extensions defaultExtensionNs="org.jetbrains.kotlin">`. -->

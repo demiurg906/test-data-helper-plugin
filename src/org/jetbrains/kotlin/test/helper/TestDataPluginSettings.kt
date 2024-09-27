@@ -133,7 +133,8 @@ class TestDataPathsConfiguration : PersistentStateComponent<TestDataPathsConfigu
     }
 }
 
-class TestDataPathsConfigurable(private val project: Project) : BoundConfigurable("Kotlin TestData Plugin Settings", "Tools.KotlinTestDataPluginSettings") {
+class TestDataPathsConfigurable(private val project: Project)
+    : BoundConfigurable(MyBundle.message("pluginSettingsDisplayName"), "Tools.KotlinTestDataPluginSettings") {
 
     private val configuration: TestDataPathsConfiguration = TestDataPathsConfiguration.getInstance(project)
 
