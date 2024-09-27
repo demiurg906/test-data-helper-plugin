@@ -14,7 +14,6 @@
     <extensions defaultExtensionNs="com.intellij">
         <fileEditorProvider implementation="org.jetbrains.kotlin.test.helper.KotlinTestDataFileEditorProvider"/>
         <projectConfigurable bundle="messages.MyBundle" instance="org.jetbrains.kotlin.test.helper.TestDataPathsConfigurable"/>
-        <projectService serviceImplementation="org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration"/>
         <projectService serviceImplementation="org.jetbrains.kotlin.test.helper.actions.LastUsedTestService"/>
 
         <!-- For some reason, doesn't work when put into `<extensions defaultExtensionNs="org.jetbrains.kotlin">`. -->

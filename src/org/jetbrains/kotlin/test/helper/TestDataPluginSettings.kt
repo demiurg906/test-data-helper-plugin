@@ -3,6 +3,7 @@ package org.jetbrains.kotlin.test.helper
 import com.intellij.ide.IdeBundle
 import com.intellij.openapi.compiler.JavaCompilerBundle
 import com.intellij.openapi.components.PersistentStateComponent
+import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.diagnostic.Logger
@@ -41,6 +42,7 @@ import kotlin.io.path.Path
 import kotlin.io.path.pathString
 import kotlin.io.path.relativeTo
 
+@Service(Service.Level.PROJECT)
 @State(name = "TestDataPluginSettings", storages = [(Storage("kotlinTestDataPluginTestDataPaths.xml"))])
 class TestDataPathsConfiguration : PersistentStateComponent<TestDataPathsConfiguration> {
     companion object {
