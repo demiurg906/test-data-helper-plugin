@@ -387,8 +387,8 @@ private abstract class TestDataPluginSettingsPanel(private val project: Project)
         )
     }
 
-    protected lateinit var myRemoveButton: JButton
-    protected lateinit var myExcludedTable: JBTable
+    lateinit var myRemoveButton: JButton
+    lateinit var myExcludedTable: JBTable
 
     override fun getLabelText(): String? {
         return null
@@ -409,15 +409,15 @@ private abstract class TestDataPluginSettingsPanel(private val project: Project)
         return arrayOf()
     }
 
-    protected abstract val numberOfFiles: Int
+    abstract val numberOfFiles: Int
 
-    protected abstract fun addFile(index: Int, file: VirtualFile)
+    abstract fun addFile(index: Int, file: VirtualFile)
 
-    protected abstract fun removeFileAt(index: Int)
+    abstract fun removeFileAt(index: Int)
 
-    protected abstract fun isFileExcluded(file: VirtualFile): Boolean
+    abstract fun isFileExcluded(file: VirtualFile): Boolean
 
-    protected fun addPath() {
+    fun addPath() {
         var selected: Int = numberOfFiles
         val savedSelected = selected
         val chosen = FileChooser.chooseFiles(fileChooserDescriptor, project, null)
@@ -436,7 +436,7 @@ private abstract class TestDataPluginSettingsPanel(private val project: Project)
         }
     }
 
-    protected fun removePaths() {
+    fun removePaths() {
         val selected = myExcludedTable.selectedRows
         if (selected == null || selected.isEmpty()) {
             return
@@ -468,7 +468,7 @@ private abstract class TestDataPluginSettingsPanel(private val project: Project)
         }
     }
 
-    protected fun JBTable.configure(names: Array<String>, renderer: TableCellRenderer) {
+    fun JBTable.configure(names: Array<String>, renderer: TableCellRenderer) {
         setShowGrid(false)
         setEnableAntialiasing(true)
         emptyText.text = JavaCompilerBundle.message("no.excludes")
