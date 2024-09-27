@@ -176,14 +176,14 @@ class TestDataPathsConfigurable(private val project: Project) : BoundConfigurabl
     private fun testDataFilesModified(): Boolean {
         val filesFromConfiguration = configuration.testDataFiles
         if (filesFromConfiguration.size != testDataFiles.size) return true
-        return filesFromConfiguration.zip(testDataFiles).all { it.first == it.second.path }
+        return filesFromConfiguration.zip(testDataFiles).any { it.first != it.second.path }
     }
 
     private fun relatedFilesSearchPathsModified(): Boolean {
         val pathsFromConfiguration = configuration.relatedFilesSearchPaths
         if (pathsFromConfiguration.size != relatedFileSearchPaths.size) return true
         return pathsFromConfiguration.asSequence().zip(relatedFileSearchPaths.asSequence())
-            .all { it.first.key == it.second.first.path && it.first.value.toList() == it.second.second }
+            .any { it.first.key != it.second.first.path || it.first.value.toList() != it.second.second }
     }
 
     override fun isModified() = testDataFilesModified() || relatedFilesSearchPathsModified()
