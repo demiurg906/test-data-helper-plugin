@@ -1,6 +1,10 @@
 package org.jetbrains.kotlin.test.helper.ui
 
 import com.intellij.codeHighlighting.BackgroundEditorHighlighter
+import com.intellij.execution.ExecutionListener
+import com.intellij.execution.ExecutionManager
+import com.intellij.execution.process.ProcessHandler
+import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.icons.AllIcons
 import com.intellij.ide.structureView.StructureViewBuilder
 import com.intellij.ide.util.PropertiesComponent
@@ -131,11 +135,20 @@ class TestDataEditor(
             }
         }
 
-        baseEditor.editor.project?.messageBus
-                ?.connect(this)
-                ?.subscribe(DumbService.DUMB_MODE, object : DumbService.DumbModeListener {
-                    override fun exitDumbMode() = generatedTestComboBoxAction.state.updateTestsList()
-                })
+        val connection = baseEditor.editor.project?.messageBus?.connect(this)
+
+        connection?.subscribe(DumbService.DUMB_MODE, object : DumbService.DumbModeListener {
+            override fun exitDumbMode() = generatedTestComboBoxAction.state.updateTestsList()
+        })
+
+        connection?.subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+            override fun processTerminated(
+                executorId: String,
+                env: ExecutionEnvironment,
+                handler: ProcessHandler,
+                exitCode: Int
+            ) = generatedTestComboBoxAction.state.updateTestsList()
+        })
 
         return ActionManager
             .getInstance()
