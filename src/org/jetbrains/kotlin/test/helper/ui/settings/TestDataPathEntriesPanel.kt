@@ -18,11 +18,11 @@ class TestDataPathEntriesPanel(project: Project, val state: PluginSettingsState)
     override val numberOfElements: Int
         get() = testDataFiles.size
 
-    override fun addElement(index: Int, file: VirtualFile) {
-        testDataFiles.add(index, file)
+    override fun addElement(index: Int, element: VirtualFile) {
+        testDataFiles.add(index, element)
     }
 
-    override fun isElementExcluded(file: VirtualFile): Boolean = file in testDataFiles
+    override fun isElementExcluded(element: VirtualFile): Boolean = element in testDataFiles
 
     override fun removeElementAt(index: Int) {
         testDataFiles.removeAt(index)

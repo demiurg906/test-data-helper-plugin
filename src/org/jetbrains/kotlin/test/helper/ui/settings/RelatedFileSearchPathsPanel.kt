@@ -19,16 +19,16 @@ class RelatedFileSearchPathsPanel(project: Project, private val state: PluginSet
     override val numberOfElements: Int
         get() = relatedFileSearchPaths.size
 
-    override fun addElement(index: Int, file: VirtualFile) {
-        relatedFileSearchPaths.add(index, Pair(file, mutableListOf()))
+    override fun addElement(index: Int, element: VirtualFile) {
+        relatedFileSearchPaths.add(index, Pair(element, mutableListOf()))
     }
 
     override fun removeElementAt(index: Int) {
         relatedFileSearchPaths.removeAt(index)
     }
 
-    override fun isElementExcluded(file: VirtualFile): Boolean =
-        relatedFileSearchPaths.find { it.first == file } != null
+    override fun isElementExcluded(element: VirtualFile): Boolean =
+        relatedFileSearchPaths.find { it.first == element } != null
 
     override fun createMainComponent(): JComponent {
         val names = arrayOf(

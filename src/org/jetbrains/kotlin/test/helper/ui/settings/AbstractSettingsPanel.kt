@@ -18,9 +18,9 @@ abstract class AbstractSettingsPanel<T> : PanelWithButtons() {
 
     abstract val numberOfElements: Int
 
-    abstract fun addElement(index: Int, file: T)
+    abstract fun addElement(index: Int, element: T)
     abstract fun removeElementAt(index: Int)
-    abstract fun isElementExcluded(file: T): Boolean
+    abstract fun isElementExcluded(element: T): Boolean
     abstract fun createNewElementsOnAddClick(): List<T>
 
     override fun createButtons(): Array<JButton> {
