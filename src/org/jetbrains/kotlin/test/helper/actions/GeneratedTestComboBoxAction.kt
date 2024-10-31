@@ -1,19 +1,12 @@
 package org.jetbrains.kotlin.test.helper.actions
 
-import com.intellij.codeInsight.daemon.impl.PsiElementListNavigator
 import com.intellij.codeInsight.navigation.PsiTargetNavigator
 import com.intellij.execution.Location
 import com.intellij.execution.PsiLocation
 import com.intellij.icons.AllIcons
 import com.intellij.ide.actions.runAnything.RunAnythingAction
 import com.intellij.ide.ui.laf.darcula.DarculaUIUtil
-import com.intellij.ide.util.DefaultPsiElementCellRenderer
-import com.intellij.openapi.actionSystem.ActionUpdateThread
-import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.DataContext
-import com.intellij.openapi.actionSystem.DefaultActionGroup
-import com.intellij.openapi.actionSystem.Presentation
+import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.actionSystem.ex.ComboBoxAction
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ModalityState
@@ -25,7 +18,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifierListOwner
@@ -43,12 +35,7 @@ import org.jetbrains.plugins.gradle.util.createTestFilterFrom
 import java.awt.Component
 import java.io.File
 import java.util.concurrent.Callable
-import javax.swing.BoxLayout
-import javax.swing.DefaultComboBoxModel
-import javax.swing.DefaultListCellRenderer
-import javax.swing.Icon
-import javax.swing.JComponent
-import javax.swing.JList
+import javax.swing.*
 
 class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction(), DumbAware {
     companion object {

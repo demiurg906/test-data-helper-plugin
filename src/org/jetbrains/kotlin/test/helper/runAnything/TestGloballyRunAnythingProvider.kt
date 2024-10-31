@@ -4,16 +4,16 @@ import com.intellij.ide.actions.runAnything.RunAnythingAction.EXECUTOR_KEY
 import com.intellij.ide.actions.runAnything.RunAnythingUtil
 import com.intellij.ide.actions.runAnything.activity.RunAnythingCommandLineProvider
 import com.intellij.openapi.actionSystem.DataContext
-import com.intellij.openapi.module.ModuleManager
-import com.intellij.openapi.roots.ModuleRootManager
-import com.intellij.openapi.vfs.VirtualFile
-import org.jetbrains.plugins.gradle.action.GradleExecuteTaskAction
-import java.io.File
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.WindowManager
+import org.jetbrains.plugins.gradle.action.GradleExecuteTaskAction
 import java.awt.Component
+import java.io.File
 import javax.swing.JWindow
 
 private const val COMMAND = "testGlobally"
