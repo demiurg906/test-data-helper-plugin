@@ -28,6 +28,11 @@ import kotlin.io.path.Path
 import kotlin.io.path.pathString
 import kotlin.io.path.relativeTo
 
+class PluginSettingsState(
+    var testDataFiles: MutableList<VirtualFile>,
+    var relatedFileSearchPaths: MutableList<Pair<VirtualFile, List<String>>>
+)
+
 @Service(Service.Level.PROJECT)
 @State(name = "TestDataPluginSettings", storages = [(Storage("kotlinTestDataPluginTestDataPaths.xml"))])
 class TestDataPathsConfiguration : PersistentStateComponent<TestDataPathsConfiguration> {
@@ -127,12 +132,27 @@ class TestDataPathsConfigurable(private val project: Project) :
 
     private val configuration: TestDataPathsConfiguration = TestDataPathsConfiguration.getInstance(project)
 
+    // -------------------------------- state --------------------------------
+
+    private val state: PluginSettingsState = PluginSettingsState(
+        testDataFiles = resetTestDataFiles(),
+        relatedFileSearchPaths = resetRelatedFileSearchPaths(),
+    )
+
+    private var testDataFiles: MutableList<VirtualFile>
+        get() = state.testDataFiles
+        set(value) { state.testDataFiles = value }
+
+    private var relatedFileSearchPaths: MutableList<Pair<VirtualFile, List<String>>>
+        get() = state.relatedFileSearchPaths
+        set(value) { state.relatedFileSearchPaths = value }
+
+    // -------------------------------- state initialization --------------------------------
+
     private fun resetTestDataFiles(): MutableList<VirtualFile> {
         val fileSystem = VirtualFileManager.getInstance().getFileSystem("file")
         return configuration.testDataFiles.mapNotNullTo(mutableListOf()) { fileSystem.findFileByPath(it) }
     }
-
-    private var testDataFiles: MutableList<VirtualFile> = resetTestDataFiles()
 
     private fun resetRelatedFileSearchPaths(): MutableList<Pair<VirtualFile, List<String>>> {
         val fileSystem = VirtualFileManager.getInstance().getFileSystem("file")
@@ -141,7 +161,7 @@ class TestDataPathsConfigurable(private val project: Project) :
         }
     }
 
-    private var relatedFileSearchPaths: MutableList<Pair<VirtualFile, List<String>>> = resetRelatedFileSearchPaths()
+    // -------------------------------- panels --------------------------------
 
     private val testDataPathPanel: TestDataPathEntriesPanel by lazy {
         TestDataPathEntriesPanel()
@@ -167,6 +187,8 @@ class TestDataPathsConfigurable(private val project: Project) :
         }
     }
 
+    // -------------------------------- other stuff --------------------------------
+
     private fun testDataFilesModified(): Boolean {
         val filesFromConfiguration = configuration.testDataFiles
         if (filesFromConfiguration.size != testDataFiles.size) return true
@@ -180,7 +202,9 @@ class TestDataPathsConfigurable(private val project: Project) :
             .any { it.first.key != it.second.first.path || it.first.value.toList() != it.second.second }
     }
 
-    override fun isModified() = testDataFilesModified() || relatedFilesSearchPathsModified()
+    override fun isModified(): Boolean {
+        return testDataFilesModified() || relatedFilesSearchPathsModified()
+    }
 
     override fun reset() {
         super.reset()
@@ -376,5 +400,3 @@ class TestDataPathsConfigurable(private val project: Project) :
         }
     }
 }
-
-
