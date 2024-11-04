@@ -1,62 +1,59 @@
 package org.jetbrains.kotlin.test.helper.ui.settings
 
-import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.table.JBTable
-import com.intellij.util.execution.ParametersListUtil
 import org.jetbrains.kotlin.test.helper.PluginSettingsState
 import javax.swing.DefaultCellEditor
 import javax.swing.JComponent
+import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.TableCellEditor
 import javax.swing.table.TableModel
 
-class RelatedFileSearchPathsPanel(project: Project, private val state: PluginSettingsState) : FileSettingsPanel(project) {
-    private val relatedFileSearchPaths: MutableList<Pair<VirtualFile, List<String>>>
-        get() = state.relatedFileSearchPaths
+class TestTagsEntriesPanel(val state: PluginSettingsState) : AbstractSettingsPanel<String>() {
+    private val testTags: MutableList<Pair<String, List<String>>>
+        get() = state.testTags
 
     override val numberOfElements: Int
-        get() = relatedFileSearchPaths.size
+        get() = testTags.size
 
-    override fun addElement(index: Int, element: VirtualFile) {
-        relatedFileSearchPaths.add(index, Pair(element, mutableListOf()))
+    override fun addElement(index: Int, element: String) {
+        testTags.add(index, Pair(element, mutableListOf()))
     }
 
     override fun removeElementAt(index: Int) {
-        relatedFileSearchPaths.removeAt(index)
+        testTags.removeAt(index)
     }
 
-    override fun isElementExcluded(element: VirtualFile): Boolean =
-        relatedFileSearchPaths.find { it.first == element } != null
+    override fun isElementExcluded(element: String): Boolean = false
+
+    override fun createNewElementsOnAddClick(): List<String> {
+        return listOf("")
+    }
 
     override fun createMainComponent(): JComponent {
         val names = arrayOf(
-            "Test files",
-            "Where to search for related files (wildcards are supported)"
+            "Generated test name pattern",
+            "List of related tags (separated by comma, no spaces)"
         )
         // Create a model of the data.
-        val dataModel: TableModel = object : TwoColumnTableModel<VirtualFile, List<String>>(relatedFileSearchPaths, names) {
-            override fun VirtualFile.presentableFirst(): String {
-                return presentableUrl
+        val dataModel: TableModel = object : TwoColumnTableModel<String, List<String>>(testTags, names) {
+            override fun String.presentableFirst(): String {
+                return this
             }
 
             override fun List<String>.presentableSecond(): String {
-                return ParametersListUtil.join(this)
+                return joinToString(",")
             }
 
-            override fun parseFirst(
-                oldValue: VirtualFile,
-                newValue: String
-            ): VirtualFile? {
-                val fileSystem = oldValue.fileSystem
-                return fileSystem.findFileByPath(newValue)
+            override fun parseFirst(oldValue: String, newValue: String): String? {
+                return newValue
             }
 
             override fun parseSecond(
                 oldValue: List<String>,
                 newValue: String
             ): List<String>? {
-                return ParametersListUtil.parse(newValue)
+                return newValue.split(",")
             }
         }
 
@@ -68,7 +65,7 @@ class RelatedFileSearchPathsPanel(project: Project, private val state: PluginSet
                 return super.getCellEditor(row, column)
             }
         }.apply {
-            configure(names, FilePathRenderer { relatedFileSearchPaths[it].first })
+            configure(names, DefaultTableCellRenderer())
         }
 
         val defaultEditor = myTable.getDefaultEditor(String::class.java)
@@ -87,4 +84,3 @@ class RelatedFileSearchPathsPanel(project: Project, private val state: PluginSet
         initPanel()
     }
 }
-

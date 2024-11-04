@@ -28,6 +28,7 @@ import com.intellij.psi.util.parentsOfType
 import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.concurrency.AppExecutorUtil
+import org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration
 import org.jetbrains.kotlin.test.helper.ui.WidthAdjustingPanel
 import org.jetbrains.plugins.gradle.action.GradleExecuteTaskAction
 import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestRunConfigurationProducer
@@ -45,6 +46,11 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
 
     private var box: ComboBox<List<AnAction>>? = null
     private var boxModel: DefaultComboBoxModel<List<AnAction>>? = null
+    
+    private val configuration = TestDataPathsConfiguration.getInstance(baseEditor.editor.project!!)
+    private val testTags: Map<String, Array<String>>
+        get() = configuration.testTags
+    
     val runAllTestsAction: RunAllTestsAction = RunAllTestsAction()
     val goToAction: GoToDeclaration = GoToDeclaration()
     val runAction = RunAction(0, "Run", AllIcons.Actions.Execute)
@@ -221,7 +227,20 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                     }
                 }
 
-                topLevelClass.name!! to group
+                val runnerName = topLevelClass.name!!
+                val tags = testTags.firstNotNullOfOrNull { (pattern, tags) ->
+                    val patternRegex = pattern.toRegex()
+                    if(patternRegex.matches(runnerName)) {
+                        tags.toList()
+                    } else null
+                }.orEmpty()
+                val runnerLabel = buildString {
+                    if (tags.isNotEmpty()) {
+                        append(tags.joinToString(prefix = "[", postfix = "] ", separator = ", "))
+                    }
+                    append(runnerName)
+                }
+                runnerLabel to group
             }.sortedBy { it.first }
         }
 

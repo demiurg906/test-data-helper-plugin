@@ -10,10 +10,13 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.ui.PanelWithButtons
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.Panel
 import com.intellij.ui.dsl.builder.panel
 import org.jetbrains.kotlin.test.helper.ui.settings.RelatedFileSearchPathsPanel
 import org.jetbrains.kotlin.test.helper.ui.settings.TestDataPathEntriesPanel
+import org.jetbrains.kotlin.test.helper.ui.settings.TestTagsEntriesPanel
 import javax.swing.table.AbstractTableModel
 import kotlin.io.path.Path
 import kotlin.io.path.pathString
@@ -21,7 +24,8 @@ import kotlin.io.path.relativeTo
 
 class PluginSettingsState(
     var testDataFiles: MutableList<VirtualFile>,
-    var relatedFileSearchPaths: MutableList<Pair<VirtualFile, List<String>>>
+    var relatedFileSearchPaths: MutableList<Pair<VirtualFile, List<String>>>,
+    var testTags: MutableList<Pair<String, List<String>>>,
 )
 
 @Service(Service.Level.PROJECT)
@@ -39,30 +43,42 @@ class TestDataPathsConfiguration : PersistentStateComponent<TestDataPathsConfigu
 
     var relatedFilesSearchPaths: Map<String, Array<String>> = emptyMap()
 
+    var testTags: Map<String, Array<String>> = emptyMap()
+
     override fun getState(): TestDataPathsConfiguration {
         return this
     }
 
     override fun loadState(state: TestDataPathsConfiguration) {
-        loadState(state.testDataFiles, state.relatedFilesSearchPaths)
+        loadState(state.testDataFiles, state.relatedFilesSearchPaths, state.testTags)
     }
 
     fun loadState(
         newTestDataFiles: List<VirtualFile>,
-        newRelatedFilesSearchPaths: List<Pair<VirtualFile, List<String>>>
+        newRelatedFilesSearchPaths: List<Pair<VirtualFile, List<String>>>,
+        newTestTags: List<Pair<String, List<String>>>,
     ) {
         loadState(
             newTestDataFiles.map { it.path }.toTypedArray(),
             newRelatedFilesSearchPaths.associateBy(
                 keySelector = { it.first.path },
                 valueTransform = { it.second.toTypedArray() }
-            )
+            ),
+            newTestTags.associateBy(
+                keySelector = { it.first },
+                valueTransform = { it.second.toTypedArray() }
+            ),
         )
     }
 
-    private fun loadState(newTestDataFiles: Array<String>, newRelatedFilesSearchPaths: Map<String, Array<String>>) {
+    private fun loadState(
+        newTestDataFiles: Array<String>,
+        newRelatedFilesSearchPaths: Map<String, Array<String>>,
+        newTestTags: Map<String, Array<String>>,
+    ) {
         testDataFiles = newTestDataFiles.copyOf()
         relatedFilesSearchPaths = newRelatedFilesSearchPaths.toMap()
+        testTags = newTestTags.toMap()
     }
 
     /**
@@ -128,6 +144,7 @@ class TestDataPathsConfigurable(private val project: Project) :
     private val state: PluginSettingsState = PluginSettingsState(
         testDataFiles = resetTestDataFiles(),
         relatedFileSearchPaths = resetRelatedFileSearchPaths(),
+        testTags = resetTestTags()
     )
 
     private var testDataFiles: MutableList<VirtualFile>
@@ -137,6 +154,10 @@ class TestDataPathsConfigurable(private val project: Project) :
     private var relatedFileSearchPaths: MutableList<Pair<VirtualFile, List<String>>>
         get() = state.relatedFileSearchPaths
         set(value) { state.relatedFileSearchPaths = value }
+
+    private var testTags: MutableList<Pair<String, List<String>>>
+        get() = state.testTags
+        set(value) { state.testTags = value }
 
     // -------------------------------- state initialization --------------------------------
 
@@ -152,6 +173,12 @@ class TestDataPathsConfigurable(private val project: Project) :
         }
     }
 
+    private fun resetTestTags(): MutableList<Pair<String, List<String>>> {
+        return configuration.testTags.mapNotNullTo(mutableListOf()) { entry ->
+            entry.key to entry.value.toList()
+        }
+    }
+
     // -------------------------------- panels --------------------------------
 
     private val testDataPathPanel: TestDataPathEntriesPanel by lazy {
@@ -162,19 +189,23 @@ class TestDataPathsConfigurable(private val project: Project) :
         RelatedFileSearchPathsPanel(project, state)
     }
 
+    private val testTagsPanel: TestTagsEntriesPanel by lazy {
+        TestTagsEntriesPanel(state)
+    }
+
     override fun createPanel(): DialogPanel {
-        return panel {
-            row("Test data directories:") {}
+        fun Panel.panelRow(title: String, panel: PanelWithButtons) {
+            row(title) {}
             row {
-                cell(testDataPathPanel)
-                    .align(AlignX.FILL)
+                cell(panel).align(AlignX.FILL)
             }
             separator()
-            row("Related file search paths:") {}
-            row {
-                cell(relatedFilesSearchPathsPanel)
-                    .align(AlignX.FILL)
-            }
+        }
+
+        return panel {
+            panelRow("Test data directories:", testDataPathPanel)
+            panelRow("Related file search paths:", relatedFilesSearchPathsPanel)
+            panelRow("Test tags:", testTagsPanel)
         }
     }
 
@@ -193,20 +224,27 @@ class TestDataPathsConfigurable(private val project: Project) :
             .any { it.first.key != it.second.first.path || it.first.value.toList() != it.second.second }
     }
 
+    private fun testTagsModified(): Boolean {
+        val tagsFromConfiguration = configuration.testTags
+        if (tagsFromConfiguration.size != testTags.size) return true
+        return tagsFromConfiguration.asSequence().zip(testTags.asSequence())
+            .any { it.first.key != it.second.first || it.first.value.toList() != it.second.second }
+    }
+
     override fun isModified(): Boolean {
-        return testDataFilesModified() || relatedFilesSearchPathsModified()
+        return testDataFilesModified() || relatedFilesSearchPathsModified() || testTagsModified()
     }
 
     override fun reset() {
         super.reset()
         testDataFiles = resetTestDataFiles()
         relatedFileSearchPaths = resetRelatedFileSearchPaths()
-        (testDataPathPanel.myExcludedTable.model as? AbstractTableModel)?.fireTableDataChanged()
-        (relatedFilesSearchPathsPanel.myExcludedTable.model as? AbstractTableModel)?.fireTableDataChanged()
+        (testDataPathPanel.myTable.model as? AbstractTableModel)?.fireTableDataChanged()
+        (relatedFilesSearchPathsPanel.myTable.model as? AbstractTableModel)?.fireTableDataChanged()
     }
 
     override fun apply() {
         super.apply()
-        configuration.loadState(testDataFiles, relatedFileSearchPaths)
+        configuration.loadState(testDataFiles, relatedFileSearchPaths, testTags)
     }
 }

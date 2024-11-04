@@ -14,7 +14,7 @@ import javax.swing.table.TableCellRenderer
 
 abstract class AbstractSettingsPanel<T> : PanelWithButtons() {
     lateinit var myRemoveButton: JButton
-    lateinit var myExcludedTable: JBTable
+    lateinit var myTable: JBTable
 
     abstract val numberOfElements: Int
 
@@ -30,7 +30,7 @@ abstract class AbstractSettingsPanel<T> : PanelWithButtons() {
             addActionListener { onRemoveClick() }
             isEnabled = false
             model.addChangeListener {
-                if (myExcludedTable.selectedRow == -1) {
+                if (myTable.selectedRow == -1) {
                     isEnabled = false
                 }
             }
@@ -51,22 +51,22 @@ abstract class AbstractSettingsPanel<T> : PanelWithButtons() {
             selected++
         }
         if (selected > savedSelected) { // actually added something
-            val model = myExcludedTable.model as AbstractTableModel
+            val model = myTable.model as AbstractTableModel
             model.fireTableRowsInserted(savedSelected, selected - 1)
-            myExcludedTable.setRowSelectionInterval(savedSelected, selected - 1)
+            myTable.setRowSelectionInterval(savedSelected, selected - 1)
         }
     }
 
     fun onRemoveClick() {
-        val selected = myExcludedTable.selectedRows
+        val selected = myTable.selectedRows
         if (selected == null || selected.isEmpty()) {
             return
         }
-        if (myExcludedTable.isEditing) {
-            val editor = myExcludedTable.cellEditor
+        if (myTable.isEditing) {
+            val editor = myTable.cellEditor
             editor?.stopCellEditing()
         }
-        val model = myExcludedTable.model as AbstractTableModel
+        val model = myTable.model as AbstractTableModel
         Arrays.sort(selected)
         var indexToSelect = selected[selected.size - 1]
         var removedCount = 0
@@ -80,11 +80,11 @@ abstract class AbstractSettingsPanel<T> : PanelWithButtons() {
             indexToSelect = numberOfElements - 1
         }
         if (indexToSelect >= 0) {
-            myExcludedTable.setRowSelectionInterval(indexToSelect, indexToSelect)
+            myTable.setRowSelectionInterval(indexToSelect, indexToSelect)
         }
         IdeFocusManager.getGlobalInstance().doWhenFocusSettlesDown {
             IdeFocusManager.getGlobalInstance().requestFocus(
-                myExcludedTable, true
+                myTable, true
             )
         }
     }

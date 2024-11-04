@@ -76,14 +76,14 @@ class TestDataPathEntriesPanel(project: Project, val state: PluginSettingsState)
                 testDataFiles[row] = newFile
             }
         }
-        myExcludedTable = JBTable(dataModel).apply {
+        myTable = JBTable(dataModel).apply {
             configure(names, FilePathRenderer(testDataFiles::get))
         }
-        val editor = myExcludedTable.getDefaultEditor(String::class.java)
+        val editor = myTable.getDefaultEditor(String::class.java)
         if (editor is DefaultCellEditor) {
             editor.clickCountToStart = 1
         }
-        return ToolbarDecorator.createDecorator(myExcludedTable)
+        return ToolbarDecorator.createDecorator(myTable)
             .disableUpAction()
             .disableDownAction()
             .setAddAction { onAddClick() }
