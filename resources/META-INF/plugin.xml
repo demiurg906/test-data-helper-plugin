@@ -29,4 +29,13 @@
         <supportsKotlinK2Mode/>
         <supportsKotlinPluginMode supportsK2="true" supportsK1="true"/>
     </extensions>
+
+    <actions>
+        <action id="TestDataRunAllTests" class="org.jetbrains.kotlin.test.helper.actions.RunSelectedFilesTestsAction"
+                text="Run All Tests" description="Run all tests related to selected files"
+                icon="AllIcons.RunConfigurations.Junit">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="ChangesViewPopupMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>

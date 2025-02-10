@@ -15,33 +15,24 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.ui.ComboBox
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
-import com.intellij.psi.PsiModifierListOwner
-import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.search.PsiShortNamesCache
-import com.intellij.psi.util.parentOfType
 import com.intellij.psi.util.parentsOfType
 import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration
+import org.jetbrains.kotlin.test.helper.runGradleCommandLine
 import org.jetbrains.kotlin.test.helper.ui.WidthAdjustingPanel
 import org.jetbrains.plugins.gradle.action.GradleExecuteTaskAction
-import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestRunConfigurationProducer
-import org.jetbrains.plugins.gradle.util.createTestFilterFrom
 import java.awt.Component
-import java.io.File
 import java.util.concurrent.Callable
 import javax.swing.*
 
 class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction(), DumbAware {
     companion object {
         private val logger = Logger.getInstance(GeneratedTestComboBoxAction::class.java)
-        private val testNameReplacementRegex = "[.-]".toRegex()
     }
 
     private var box: ComboBox<List<AnAction>>? = null
@@ -134,43 +125,11 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                 .submit(AppExecutorUtil.getAppExecutorService())
         }
 
-        private fun String.indexOfOrLength(symbol: Char, startIndex: Int): Int {
-            val index = indexOf(symbol, startIndex)
-            return if (index > -1) index else length
-        }
-
-        private val String.asPathWithoutAllExtensions: String
-            get() {
-                val path = if (contains(File.separator)) substringBeforeLast(File.separator) else ""
-                val name = substringAfterLast(File.separator)
-
-                val result = buildString {
-                    if (path.isNotEmpty()) {
-                        append(path)
-                        append(File.separator)
-                    }
-
-                    val nameParts = name.split('.').toMutableList()
-                    nameParts.removeAt(nameParts.lastIndex)
-
-                    while (nameParts.size > 1 && !nameParts.last().all { it.isDigit() }) {
-                        nameParts.removeAt(nameParts.lastIndex)
-                    }
-
-                    nameParts.joinTo(this, separator = ".")
-                }
-                return result
-            }
-
-        private val VirtualFile.nameWithoutAllExtensions get() = name.asPathWithoutAllExtensions
-
         private fun createActionsForTestRunners(): List<Pair<String, List<AnAction>>> {
             val file = baseEditor.file ?: return emptyList() // TODO: log
-            val name = file.nameWithoutAllExtensions
-            val truePath = file.path
-            val path = project.basePath
             logger.info("task started")
-            val testMethods = collectMethods(name, path!!, File(truePath).absolutePath)
+
+            val testMethods = file.collectTestMethods(project)
             runAllTestsAction.computeTasksToRun(testMethods)
             goToAction.testMethods = testMethods
             logger.info("methods collected")
@@ -263,74 +222,6 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             logger.info("ui update finished")
         }
 
-        private fun collectMethods(baseName: String, path: String, truePath: String): List<PsiMethod> {
-            val cache = PsiShortNamesCache.getInstance(project)
-
-            val targetMethodName = "test${baseName.replaceFirstChar { it.uppercaseChar() }.replace(testNameReplacementRegex, "_")}"
-            val methods = cache.getMethodsByName(targetMethodName, GlobalSearchScope.allScope(project))
-                .filter { it.hasAnnotation("org.jetbrains.kotlin.test.TestMetadata") }
-
-            val truePathWithoutAllExtensions = truePath.asPathWithoutAllExtensions
-            val foundMethods: MutableList<PsiMethod> = ArrayList()
-            for (method in methods) {
-                val psiClass = method.containingClass
-
-                var currentPsiClass = psiClass
-                var testMetaData: String? = null
-                var testDataPath: String? = null
-                while (currentPsiClass != null) {
-                    testMetaData = testMetaData
-                        ?: if (currentPsiClass == psiClass) currentPsiClass.extractTestMetadataValue()
-                         else null
-                    val localTestDataPath: String? = currentPsiClass.extractTestDataPath()
-                    testDataPath = localTestDataPath ?: testDataPath
-                    val containingClass = currentPsiClass.containingClass
-                    currentPsiClass = containingClass
-                }
-
-                val methodPathPart = method.extractTestMetadataValue() ?: continue
-
-                val methodPathComponents = buildList {
-                    add(methodPathPart)
-                    testMetaData?.takeIf(String::isNotEmpty)?.let(::add)
-                    testDataPath?.takeIf(String::isNotEmpty)?.let(::add)
-                    if (testDataPath == null) add(path)
-                }
-                val methodPath = File(methodPathComponents.reversed().joinToString("/"))
-                    .canonicalFile.absolutePath
-                if (methodPath.asPathWithoutAllExtensions == truePathWithoutAllExtensions) {
-                    foundMethods.add(method)
-                }
-            }
-            return foundMethods
-        }
-
-        private fun PsiModifierListOwner?.extractTestMetadataValue(): String? {
-            return annotationValue("org.jetbrains.kotlin.test.TestMetadata")
-        }
-
-        private fun PsiModifierListOwner?.extractTestDataPath(): String? {
-            var path = annotationValue("com.intellij.testFramework.TestDataPath") ?: return null
-            if (path.contains("\$CONTENT_ROOT")) {
-                val fileIndex = ProjectRootManager.getInstance(project).fileIndex
-                val file = this?.containingFile?.virtualFile ?: return null
-                val contentRoot = fileIndex.getContentRootForFile(file) ?: return null
-                path = path.replace("\$CONTENT_ROOT", contentRoot.path)
-            }
-            if (path.contains("\$PROJECT_ROOT")) {
-                val baseDir = this?.project?.basePath ?: return null
-                path = path.replace("\$PROJECT_ROOT", baseDir)
-            }
-            return path
-        }
-
-        private fun PsiModifierListOwner?.annotationValue(name: String): String? {
-            return this?.getAnnotation(name)
-                ?.parameterList
-                ?.attributes
-                ?.firstOrNull()
-                ?.literalValue
-        }
 
         fun changeDebugAndRun(item: List<AnAction>?) {
             if (item !in debugAndRunActionLists) {
@@ -376,39 +267,11 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         private var commandLine = ""
 
         fun computeTasksToRun(testMethods: List<PsiMethod>) {
-            commandLine = buildString {
-                append("--continue ")
-
-                testMethods
-                        .flatMap { testMethod ->
-                            val parentClass = testMethod.parentOfType<PsiClass>() ?: return@flatMap emptyList()
-                            val taskArguments = createTestFilterFrom(parentClass, testMethod.name)
-                            val virtualFile = testMethod.containingFile?.virtualFile ?: return@flatMap emptyList()
-                            val allTasks = GradleTestRunConfigurationProducer.findAllTestsTaskToRun(virtualFile, testMethod.project).flatMap { it.tasks }
-                            allTasks
-                                    .map {
-                                        val group = it.substringBeforeLast(":")
-                                        val name = it.substringAfterLast(":")
-                                        group to name
-                                    }
-                                    .groupBy(keySelector = { it.first }, valueTransform = { it.second })
-                                    .map { (group, names) -> Triple(group, names.minByOrNull { it.length }!!, taskArguments) }
-                        }
-                        .groupBy({ (group, name) -> group to name }) { it.third }
-                        .forEach { (group, name), taskArguments ->
-                            append("$group:cleanTest ")
-                            append("$group:$name ")
-                            for (taskArgument in taskArguments) {
-                                append(taskArgument)
-                                append(' ')
-                            }
-                        }
-            }
+            commandLine = computeGradleCommandLine(testMethods)
         }
 
         override fun actionPerformed(e: AnActionEvent) {
-            val project = e.project!!
-            GradleExecuteTaskAction.runGradle(project, RunAnythingAction.EXECUTOR_KEY.getData(e.dataContext), project.basePath ?: "", commandLine)
+            runGradleCommandLine(e, commandLine)
         }
     }
 }

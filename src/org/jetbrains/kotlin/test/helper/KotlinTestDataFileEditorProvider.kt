@@ -12,15 +12,8 @@ import com.intellij.util.application
 import org.jetbrains.kotlin.test.helper.ui.TestDataEditor
 
 class KotlinTestDataFileEditorProvider: AsyncFileEditorProvider, DumbAware {
-    companion object {
-        private val supportedExtensions = listOf("kt", "kts", "args")
-    }
-
     override fun accept(project: Project, file: VirtualFile): Boolean {
-        if (file.extension !in supportedExtensions) return false
-        val configuration = TestDataPathsConfiguration.getInstance(project)
-        val filePath = file.path
-        return configuration.testDataFiles.any { filePath.startsWith(it) }
+        return file.isTestDataFile(project)
     }
 
     override fun createEditor(project: Project, file: VirtualFile): FileEditor {
