@@ -4,7 +4,6 @@ import com.intellij.codeInsight.navigation.PsiTargetNavigator
 import com.intellij.execution.Location
 import com.intellij.execution.PsiLocation
 import com.intellij.icons.AllIcons
-import com.intellij.ide.actions.runAnything.RunAnythingAction
 import com.intellij.ide.ui.laf.darcula.DarculaUIUtil
 import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.actionSystem.ex.ComboBoxAction
@@ -23,9 +22,9 @@ import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration
+import org.jetbrains.kotlin.test.helper.buildRunnerLabel
 import org.jetbrains.kotlin.test.helper.runGradleCommandLine
 import org.jetbrains.kotlin.test.helper.ui.WidthAdjustingPanel
-import org.jetbrains.plugins.gradle.action.GradleExecuteTaskAction
 import java.awt.Component
 import java.util.concurrent.Callable
 import javax.swing.*
@@ -186,19 +185,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                     }
                 }
 
-                val runnerName = topLevelClass.name!!
-                val tags = testTags.firstNotNullOfOrNull { (pattern, tags) ->
-                    val patternRegex = pattern.toRegex()
-                    if(patternRegex.matches(runnerName)) {
-                        tags.toList()
-                    } else null
-                }.orEmpty()
-                val runnerLabel = buildString {
-                    if (tags.isNotEmpty()) {
-                        append(tags.joinToString(prefix = "[", postfix = "] ", separator = ", "))
-                    }
-                    append(runnerName)
-                }
+                val runnerLabel = topLevelClass.buildRunnerLabel(testTags)
                 runnerLabel to group
             }.sortedBy { it.first }
         }
@@ -275,3 +262,4 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         }
     }
 }
+

@@ -4,6 +4,7 @@ import com.intellij.ide.actions.runAnything.RunAnythingAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiClass
 import org.jetbrains.plugins.gradle.action.GradleExecuteTaskAction
 import java.io.File
 import java.io.IOException
@@ -111,4 +112,20 @@ fun runGradleCommandLine(
         /* workDirectory = */ project.basePath ?: "",
         /* fullCommandLine = */ fullCommandLine
     )
+}
+
+fun PsiClass.buildRunnerLabel(allTags: Map<String, Array<String>>): String {
+    val runnerName = this.name!!
+    val tags = allTags.firstNotNullOfOrNull { (pattern, tags) ->
+        val patternRegex = pattern.toRegex()
+        if (patternRegex.matches(runnerName)) {
+            tags.toList()
+        } else null
+    }.orEmpty()
+    return buildString {
+        if (tags.isNotEmpty()) {
+            this.append(tags.joinToString(prefix = "[", postfix = "] ", separator = ", "))
+        }
+        this.append(runnerName)
+    }
 }

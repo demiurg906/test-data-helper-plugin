@@ -31,6 +31,15 @@
     </extensions>
 
     <actions>
+        <action id="TestDataRunAllTestsSpecific" class="org.jetbrains.kotlin.test.helper.actions.RunSelectedFilesSpecificTestsAction"
+                text="Run Specific Tests" description="Run specific tests related to selected files"
+                icon="AllIcons.RunConfigurations.Junit">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="ChangesViewPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+
+    <actions>
         <action id="TestDataRunAllTests" class="org.jetbrains.kotlin.test.helper.actions.RunSelectedFilesTestsAction"
                 text="Run All Tests" description="Run all tests related to selected files"
                 icon="AllIcons.RunConfigurations.Junit">
