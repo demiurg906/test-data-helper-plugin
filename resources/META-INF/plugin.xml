@@ -45,5 +45,11 @@
             <add-to-group group-id="ChangesViewPopupMenu" anchor="last"/>
             <add-to-group group-id="Vcs.Log.ChangesBrowser.Popup" anchor="last"/>
         </action>
+        <action id="RunAllChangesTests" class="org.jetbrains.kotlin.test.helper.actions.RunAllChangedTestsAction"
+                text="Run All Changed Tests"
+                description="Run all tests related to changed test data files"
+                icon="AllIcons.RunConfigurations.Junit">
+            <add-to-group group-id="ChangesViewToolbar" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>
