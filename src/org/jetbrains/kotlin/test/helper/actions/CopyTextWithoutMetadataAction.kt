@@ -5,13 +5,14 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.ide.CopyPasteManager
+import com.intellij.openapi.project.DumbAware
 import java.awt.datatransfer.StringSelection
 
 /**
  * Copies the selected text into the clipboard without common Kotlin testdata metadata (diagnostics, <caret>, etc.).
  * A custom shortcut can be assigned for the "Copy Without Metadata" action in the IDE settings.
  */
-class CopyTextWithoutMetadataAction : AnAction() {
+class CopyTextWithoutMetadataAction : AnAction(), DumbAware {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
