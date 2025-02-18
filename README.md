@@ -65,6 +65,8 @@ represents the source set root which is always present for every source set.
 
 ### Build plugin from sources
 
+The following command will build the plugin distribution to a file like `./build/distributions/TestHelper-0.0.19.zip`:
+
 ```shell
-./gradlew buildPlugin # -> ./build/distributions/TestHelper-0.0.19.zip
+./gradlew buildPlugin
 ```
