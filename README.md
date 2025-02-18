@@ -14,6 +14,7 @@ the [Kotlin](https://github.com/JetBrains/kotlin) project.
 - Quick test execution for specific generated tests associated with the opened test data file
 - Batch execution of all tests associated with the current file
 - Support for running tests from any module using inclusion filters (`--tests`)
+- Copy Kotlin testdata text without metadata (`Copy Without Metadata` action)
 
 #### Preview
 
