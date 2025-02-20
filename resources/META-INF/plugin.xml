@@ -56,7 +56,6 @@
                 class="org.jetbrains.kotlin.test.helper.actions.CopyTextWithoutMetadataAction"
                 text="Copy Without Metadata"
                 description="Copies the selected text in the current editor without Kotlin testdata metadata">
-            <add-to-group group-id="CutCopyPasteGroup" anchor="last" />
             <add-to-group group-id="Copy.Paste.Special" anchor="last" />
         </action>
 
