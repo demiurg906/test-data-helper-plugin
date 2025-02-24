@@ -67,7 +67,7 @@ fun glob(searchPattern: String, run: (Path) -> Unit) {
     )
 }
 
-private val supportedExtensions = listOf("kt", "kts", "args")
+private val supportedExtensions = listOf("kt", "kts", "args", "nkt")
 
 fun VirtualFile.isTestDataFile(project: Project): Boolean {
     if (this.extension !in supportedExtensions) return false
