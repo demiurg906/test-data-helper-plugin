@@ -40,6 +40,7 @@ dependencies {
         pluginVerifier()
         instrumentationTools()
     }
+    testImplementation(kotlin("test"))
 }
 
 // Configure gradle-intellij-plugin plugin.
