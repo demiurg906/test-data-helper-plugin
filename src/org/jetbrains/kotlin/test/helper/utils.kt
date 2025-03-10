@@ -75,11 +75,11 @@ enum class TestDataType {
 }
 
 fun VirtualFile.getTestDataType(project: Project): TestDataType? {
-    if (this.extension !in supportedExtensions) return null
     val configuration = TestDataPathsConfiguration.getInstance(project)
-    val filePath = this.path
-    if (configuration.testDataFiles.any { filePath.startsWith(it) }) return TestDataType.File
+    val filePath = path
     if (configuration.testDataDirectories.any { filePath.startsWith(it) }) return TestDataType.Directory
+    if (extension !in supportedExtensions) return null
+    if (configuration.testDataFiles.any { filePath.startsWith(it) }) return TestDataType.File
     return null
 }
 
