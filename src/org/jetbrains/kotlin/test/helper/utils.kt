@@ -69,11 +69,18 @@ fun glob(searchPattern: String, run: (Path) -> Unit) {
 
 private val supportedExtensions = listOf("kt", "kts", "args", "nkt")
 
-fun VirtualFile.isTestDataFile(project: Project): Boolean {
-    if (this.extension !in supportedExtensions) return false
+enum class TestDataType {
+    File,
+    Directory,
+}
+
+fun VirtualFile.getTestDataType(project: Project): TestDataType? {
+    if (this.extension !in supportedExtensions) return null
     val configuration = TestDataPathsConfiguration.getInstance(project)
     val filePath = this.path
-    return configuration.testDataFiles.any { filePath.startsWith(it) }
+    if (configuration.testDataFiles.any { filePath.startsWith(it) }) return TestDataType.File
+    if (configuration.testDataDirectories.any { filePath.startsWith(it) }) return TestDataType.Directory
+    return null
 }
 
 val String.asPathWithoutAllExtensions: String

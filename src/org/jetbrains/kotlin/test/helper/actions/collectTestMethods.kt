@@ -3,22 +3,28 @@ package org.jetbrains.kotlin.test.helper.actions
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.isFile
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
+import org.jetbrains.kotlin.test.helper.TestDataType
 import org.jetbrains.kotlin.test.helper.asPathWithoutAllExtensions
+import org.jetbrains.kotlin.test.helper.getTestDataType
 import org.jetbrains.kotlin.test.helper.nameWithoutAllExtensions
 import java.io.File
 
 private val testNameReplacementRegex = "[.-]".toRegex()
 
-fun VirtualFile.collectTestMethods(project: Project): List<PsiMethod> {
+fun VirtualFile.collectTestMethodsIfTestData(project: Project): List<PsiMethod> {
+    val testDataType = getTestDataType(project) ?: return emptyList()
+
+    val normalizedFile = if (isFile && testDataType == TestDataType.Directory) parent else this
+    val targetMethodName = "test${normalizedFile.nameWithoutAllExtensions.replaceFirstChar { it.uppercaseChar() }.replace(testNameReplacementRegex, "_")}"
     val cache = PsiShortNamesCache.getInstance(project)
-    val targetMethodName = "test${nameWithoutAllExtensions.replaceFirstChar { it.uppercaseChar() }.replace(testNameReplacementRegex, "_")}"
     val methods = cache.getMethodsByName(targetMethodName, GlobalSearchScope.allScope(project))
         .filter { it.hasAnnotation("org.jetbrains.kotlin.test.TestMetadata") }
-    val truePathWithoutAllExtensions = File(this.path).absolutePath.asPathWithoutAllExtensions
+    val truePathWithoutAllExtensions = File(normalizedFile.path).absolutePath.asPathWithoutAllExtensions
     val foundMethods: MutableList<PsiMethod> = ArrayList()
     for (method in methods) {
         val psiClass = method.containingClass

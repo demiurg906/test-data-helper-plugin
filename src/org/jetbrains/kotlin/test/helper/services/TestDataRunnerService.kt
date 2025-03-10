@@ -9,20 +9,17 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.platform.util.progress.reportSequentialProgress
-import com.intellij.platform.util.progress.withProgressText
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.parentsOfType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration
-import org.jetbrains.kotlin.test.helper.actions.collectTestMethods
+import org.jetbrains.kotlin.test.helper.actions.collectTestMethodsIfTestData
 import org.jetbrains.kotlin.test.helper.actions.computeGradleCommandLine
 import org.jetbrains.kotlin.test.helper.buildRunnerLabel
-import org.jetbrains.kotlin.test.helper.isTestDataFile
 import org.jetbrains.kotlin.test.helper.runGradleCommandLine
 import javax.swing.ListSelectionModel
 
@@ -96,6 +93,6 @@ class TestDataRunnerService(
 
     fun filterAndCollectTestMethods(files: List<VirtualFile>?): List<PsiMethod> {
         if (files == null) return emptyList()
-        return files.filter { it.isTestDataFile(project) }.flatMap { it.collectTestMethods(project) }
+        return files.flatMap { it.collectTestMethodsIfTestData(project) }
     }
 }
