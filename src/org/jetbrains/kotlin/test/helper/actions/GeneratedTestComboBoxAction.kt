@@ -128,7 +128,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             val file = baseEditor.file ?: return emptyList() // TODO: log
             logger.info("task started")
 
-            val testMethods = file.collectTestMethods(project)
+            val testMethods = file.collectTestMethodsIfTestData(project)
             runAllTestsAction.computeTasksToRun(testMethods)
             goToAction.testMethods = testMethods
             logger.info("methods collected")
