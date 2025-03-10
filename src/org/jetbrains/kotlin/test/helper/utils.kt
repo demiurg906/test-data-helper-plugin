@@ -78,25 +78,19 @@ fun VirtualFile.isTestDataFile(project: Project): Boolean {
 
 val String.asPathWithoutAllExtensions: String
     get() {
-        val path = if (contains(File.separator)) substringBeforeLast(File.separator) else ""
-        val name = substringAfterLast(File.separator)
+        val separatorLastIndex = lastIndexOf(File.separatorChar)
+        var dotPreviousIndex: Int
+        var dotIndex = length
 
-        val result = buildString {
-            if (path.isNotEmpty()) {
-                append(path)
-                append(File.separator)
-            }
+        do {
+            dotPreviousIndex = dotIndex
+            dotIndex = lastIndexOf('.', dotPreviousIndex - 1)
+        } while (
+            dotIndex > separatorLastIndex && // it also handles `-1`
+            !subSequence(dotIndex + 1, dotPreviousIndex).all { it.isDigit() }
+        )
 
-            val nameParts = name.split('.').toMutableList()
-            nameParts.removeAt(nameParts.lastIndex)
-
-            while (nameParts.size > 1 && !nameParts.last().all { it.isDigit() }) {
-                nameParts.removeAt(nameParts.lastIndex)
-            }
-
-            nameParts.joinTo(this, separator = ".")
-        }
-        return result
+        return substring(0, dotPreviousIndex)
     }
 
 val VirtualFile.nameWithoutAllExtensions get() = name.asPathWithoutAllExtensions
