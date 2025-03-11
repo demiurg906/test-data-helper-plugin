@@ -193,8 +193,12 @@ class TestDataPathsConfigurable(private val project: Project) :
 
     // -------------------------------- panels --------------------------------
 
-    private val testDataPathPanel: TestDataPathEntriesPanel by lazy {
-        TestDataPathEntriesPanel(project, state)
+    private val testDataFilesPathPanel: TestDataPathEntriesPanel by lazy {
+        TestDataPathEntriesPanel(project, state.testDataFiles)
+    }
+
+    private val testDataDirectoriesPathPanel: TestDataPathEntriesPanel by lazy {
+        TestDataPathEntriesPanel(project, state.testDataDirectories)
     }
 
     private val relatedFilesSearchPathsPanel: RelatedFileSearchPathsPanel by lazy {
@@ -215,7 +219,8 @@ class TestDataPathsConfigurable(private val project: Project) :
         }
 
         return panel {
-            panelRow("Test data directories:", testDataPathPanel)
+            panelRow("Test data files:", testDataFilesPathPanel)
+            panelRow("Test data directories:", testDataDirectoriesPathPanel)
             panelRow("Related file search paths:", relatedFilesSearchPathsPanel)
             panelRow("Test tags:", testTagsPanel)
         }
@@ -261,7 +266,8 @@ class TestDataPathsConfigurable(private val project: Project) :
         testDataFiles = resetTestData(isFiles = true)
         testDataDirectories = resetTestData(isFiles = false)
         relatedFileSearchPaths = resetRelatedFileSearchPaths()
-        (testDataPathPanel.myTable.model as? AbstractTableModel)?.fireTableDataChanged()
+        (testDataFilesPathPanel.myTable.model as? AbstractTableModel)?.fireTableDataChanged()
+        (testDataDirectoriesPathPanel.myTable.model as? AbstractTableModel)?.fireTableDataChanged()
         (relatedFilesSearchPathsPanel.myTable.model as? AbstractTableModel)?.fireTableDataChanged()
     }
 

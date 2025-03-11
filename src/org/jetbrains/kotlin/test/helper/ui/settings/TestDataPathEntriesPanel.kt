@@ -5,15 +5,14 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.table.JBTable
-import org.jetbrains.kotlin.test.helper.PluginSettingsState
 import javax.swing.DefaultCellEditor
 import javax.swing.JComponent
 import javax.swing.table.AbstractTableModel
 import javax.swing.table.TableModel
 
-class TestDataPathEntriesPanel(project: Project, val state: PluginSettingsState) : FileSettingsPanel(project) {
+class TestDataPathEntriesPanel(project: Project, val files: MutableList<VirtualFile>) : FileSettingsPanel(project) {
     private val testDataFiles: MutableList<VirtualFile>
-        get() = state.testDataFiles
+        get() = files
 
     override val numberOfElements: Int
         get() = testDataFiles.size
