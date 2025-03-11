@@ -94,7 +94,7 @@ val String.asPathWithoutAllExtensions: String
             dotIndex = lastIndexOf('.', dotPreviousIndex - 1)
         } while (
             dotIndex > separatorLastIndex && // it also handles `-1`
-            !subSequence(dotIndex + 1, dotPreviousIndex).all { it.isDigit() }
+            !subSequence(dotIndex + 1, dotPreviousIndex).let { it.isNotEmpty() && it.all { c -> c.isDigit() } }
         )
 
         return substring(0, dotPreviousIndex)
