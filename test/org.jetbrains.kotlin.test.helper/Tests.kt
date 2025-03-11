@@ -21,5 +21,7 @@ class Tests {
 
         assertEquals("fileNameWoExtension", "fileNameWoExtension".asPathWithoutAllExtensions)
         assertEquals("path${s}fileNameWoExtension", "path${s}fileNameWoExtension".asPathWithoutAllExtensions)
+        assertEquals("fileWithEmptyAfterDot", "fileWithEmptyAfterDot.ext.".asPathWithoutAllExtensions)
+        assertEquals("fileWithEmptyAfterIntermediateDot", "fileWithEmptyAfterIntermediateDot..ext".asPathWithoutAllExtensions)
     }
 }
