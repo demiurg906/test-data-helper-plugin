@@ -37,7 +37,7 @@ internal class ApplyFileDiffAction : DumbAwareAction() {
         WriteAction.run<Throwable> {
             for (diff in diffs) {
                 val filePath = diff.filePath ?: continue
-                val file = VfsUtil.findFile(Paths.get(filePath), true) ?: return@run
+                val file = VfsUtil.findFile(Paths.get(filePath), true) ?: continue
                 file.writeText(diff.right)
             }
         }
