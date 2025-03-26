@@ -1,6 +1,7 @@
 package org.jetbrains.kotlin.test.helper.actions
 
 import com.intellij.execution.testframework.AbstractTestProxy
+import com.intellij.execution.testframework.stacktrace.DiffHyperlink
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.WriteAction
@@ -30,7 +31,7 @@ internal class ApplyFileDiffAction : DumbAwareAction() {
             if (test.isLeaf) {
                 test.diffViewerProviders
             } else {
-                test.children.flatMap { it.diffViewerProviders }
+                collectChildrenRecursively(test, mutableListOf())
             }
         }.distinct()
 
@@ -41,5 +42,16 @@ internal class ApplyFileDiffAction : DumbAwareAction() {
                 file.writeText(diff.right)
             }
         }
+    }
+
+    private fun collectChildrenRecursively(test: AbstractTestProxy, list: MutableList<DiffHyperlink>): List<DiffHyperlink> {
+        if (test.isLeaf) {
+            list.addAll(test.diffViewerProviders)
+        } else {
+            for (child in test.children) {
+                collectChildrenRecursively(child, list)
+            }
+        }
+        return list
     }
 }
