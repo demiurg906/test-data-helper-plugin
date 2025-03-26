@@ -59,5 +59,11 @@
             <add-to-group group-id="Copy.Paste.Special" anchor="last" />
         </action>
 
+        <action id="ApplyFileDiff"
+                class="org.jetbrains.kotlin.test.helper.actions.ApplyFileDiffAction"
+                text="Apply Diffs"
+                description="Applies the diff between the expected value and the actual file">
+            <add-to-group group-id="TestTreePopupMenu" anchor="last" />
+        </action>
     </actions>
 </idea-plugin>
