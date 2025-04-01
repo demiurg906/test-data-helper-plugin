@@ -28,7 +28,7 @@ class TestDataRunnerService(
     val project: Project,
     val scope: CoroutineScope
 ) {
-    fun collectAndRunAllTests(e: AnActionEvent, files: List<VirtualFile>?) {
+    fun collectAndRunAllTests(e: AnActionEvent, files: List<VirtualFile>?, debug: Boolean) {
         if (files == null) return
 
         scope.launch(Dispatchers.Default) {
@@ -43,11 +43,11 @@ class TestDataRunnerService(
                 }
             }
 
-            runGradleCommandLine(e, commandLine)
+            runGradleCommandLine(e, commandLine, debug)
         }
     }
 
-    fun collectAndRunSpecificTests(e: AnActionEvent, files: List<VirtualFile>?) {
+    fun collectAndRunSpecificTests(e: AnActionEvent, files: List<VirtualFile>?, debug: Boolean) {
         if (files == null) return
 
         scope.launch(Dispatchers.Default) {
@@ -78,7 +78,7 @@ class TestDataRunnerService(
                             }
 
                             withContext(Dispatchers.EDT) {
-                                runGradleCommandLine(e, commandLine)
+                                runGradleCommandLine(e, commandLine, debug)
                             }
                         }
 

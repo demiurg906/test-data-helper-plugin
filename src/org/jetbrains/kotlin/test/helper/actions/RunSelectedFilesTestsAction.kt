@@ -18,20 +18,38 @@ abstract class RunSelectedFilesActionBase : AnAction() {
     override fun getActionUpdateThread(): ActionUpdateThread {
         return ActionUpdateThread.BGT
     }
+
+    abstract val isDebug: Boolean
 }
 
-class RunSelectedFilesTestsAction : RunSelectedFilesActionBase() {
+abstract class AbstractRunSelectedFilesTestsAction : RunSelectedFilesActionBase() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         project.service<TestDataRunnerService>()
-            .collectAndRunAllTests(e, e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)?.toList())
+            .collectAndRunAllTests(e, e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)?.toList(), isDebug)
     }
 }
 
-class RunSelectedFilesSpecificTestsAction : RunSelectedFilesActionBase() {
+class RunSelectedFilesTestsAction : AbstractRunSelectedFilesTestsAction() {
+    override val isDebug: Boolean get() = false
+}
+
+class DebugSelectedFilesTestsAction : AbstractRunSelectedFilesTestsAction() {
+    override val isDebug: Boolean get() = true
+}
+
+abstract class AbstractRunSelectedFilesSpecificTestsAction : RunSelectedFilesActionBase() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         project.service<TestDataRunnerService>()
-            .collectAndRunSpecificTests(e, e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)?.toList())
+            .collectAndRunSpecificTests(e, e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)?.toList(), isDebug)
     }
+}
+
+class RunSelectedFilesSpecificTestsAction: AbstractRunSelectedFilesSpecificTestsAction() {
+    override val isDebug: Boolean get() = false
+}
+
+class DebugSelectedFilesSpecificTestsAction: AbstractRunSelectedFilesSpecificTestsAction() {
+    override val isDebug: Boolean get() = true
 }

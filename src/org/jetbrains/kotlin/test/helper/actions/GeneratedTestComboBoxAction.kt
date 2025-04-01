@@ -258,7 +258,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
         }
 
         override fun actionPerformed(e: AnActionEvent) {
-            runGradleCommandLine(e, commandLine)
+            runGradleCommandLine(e, commandLine, false)
         }
     }
 }

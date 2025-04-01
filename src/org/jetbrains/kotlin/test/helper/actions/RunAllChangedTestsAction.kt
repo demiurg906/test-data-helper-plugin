@@ -11,6 +11,6 @@ class RunAllChangedTestsAction : AnAction() {
         val project = e.project ?: return
         val changedFiles = ChangeListManager.getInstance(project).affectedFiles
 
-        project.service<TestDataRunnerService>().collectAndRunAllTests(e, changedFiles)
+        project.service<TestDataRunnerService>().collectAndRunAllTests(e, changedFiles, false)
     }
 }

@@ -1,11 +1,17 @@
 package org.jetbrains.kotlin.test.helper
 
-import com.intellij.ide.actions.runAnything.RunAnythingAction
+import com.intellij.execution.ProgramRunnerUtil
+import com.intellij.execution.RunManager
+import com.intellij.execution.RunnerAndConfigurationSettings
+import com.intellij.execution.executors.DefaultDebugExecutor
+import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.externalSystem.model.execution.ExternalSystemTaskExecutionSettings
+import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiClass
-import org.jetbrains.plugins.gradle.action.GradleExecuteTaskAction
+import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.File
 import java.io.IOException
 import java.nio.file.FileVisitResult
@@ -104,15 +110,33 @@ val VirtualFile.nameWithoutAllExtensions get() = name.asPathWithoutAllExtensions
 
 fun runGradleCommandLine(
     e: AnActionEvent,
-    fullCommandLine: String
+    fullCommandLine: String,
+    debug: Boolean,
 ) {
     val project = e.project ?: return
-    GradleExecuteTaskAction.runGradle(
-        /* project = */ project,
-        /* executor = */ RunAnythingAction.EXECUTOR_KEY.getData(e.dataContext),
-        /* workDirectory = */ project.basePath ?: "",
-        /* fullCommandLine = */ fullCommandLine
+    val settings = ExternalSystemTaskExecutionSettings().apply {
+        externalProjectPath = project.basePath
+        taskNames = fullCommandLine.split(" ")
+        externalSystemIdString = GradleConstants.SYSTEM_ID.id
+    }
+    val runSettings = ExternalSystemUtil.createExternalSystemRunnerAndConfigurationSettings(
+        settings,
+        project,
+        GradleConstants.SYSTEM_ID,
+    ) ?: return
+
+    ProgramRunnerUtil.executeConfiguration(
+        runSettings,
+        if (debug) DefaultDebugExecutor.getDebugExecutorInstance() else DefaultRunExecutor.getRunExecutorInstance()
     )
+
+    val runManager = RunManager.getInstance(project)
+    val existingConfiguration = runManager.findConfigurationByTypeAndName(runSettings.type, runSettings.name)
+    if (existingConfiguration == null) {
+        runManager.setTemporaryConfiguration(runSettings)
+    } else {
+        runManager.selectedConfiguration = existingConfiguration
+    }
 }
 
 fun PsiClass.buildRunnerLabel(allTags: Map<String, Array<String>>): String {
