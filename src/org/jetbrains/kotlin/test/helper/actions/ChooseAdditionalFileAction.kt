@@ -86,6 +86,10 @@ class ChooseAdditionalFileAction(
         "Show diff between base and additional files",
         AllIcons.Actions.Diff
     ), DumbAware {
+        override fun update(e: AnActionEvent) {
+            e.presentation.isEnabled = previewEditorState.currentPreview.file.let { it != null && it != testDataEditor.file }
+        }
+
         override fun actionPerformed(e: AnActionEvent) {
             val delegateAction = object : CompareFilesAction() {
                 override fun getDiffRequestChain(e: AnActionEvent): DiffRequestChain? {
@@ -100,6 +104,10 @@ class ChooseAdditionalFileAction(
                 }
             }
             delegateAction.actionPerformed(e)
+        }
+
+        override fun getActionUpdateThread(): ActionUpdateThread {
+            return ActionUpdateThread.BGT
         }
     }
 }
