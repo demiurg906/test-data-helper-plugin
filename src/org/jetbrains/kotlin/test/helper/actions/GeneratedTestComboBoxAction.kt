@@ -33,8 +33,6 @@ import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.application
 import com.intellij.util.concurrency.AppExecutorUtil
-import org.jetbrains.annotations.NonNls
-import org.jetbrains.annotations.SystemIndependent
 import org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration
 import org.jetbrains.kotlin.test.helper.buildRunnerLabel
 import org.jetbrains.kotlin.test.helper.createGradleExternalSystemTaskExecutionSettings
@@ -269,12 +267,12 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
                     runGradleCommandLine(e, commandLine, false, title)
                 }
             },
-            object : AnAction("Run All & Apply Diffs"), DumbAware {
+            object : AnAction("Run All And Apply Diffs"), DumbAware {
                 override fun actionPerformed(e: AnActionEvent) {
                     runAllAndApplyDiff(e)
                 }
             },
-            object : AnAction("Generate Tests, Run All & Apply Diffs"), DumbAware {
+            object : AnAction("Generate Tests, Run All And Apply Diffs"), DumbAware {
                 override fun actionPerformed(e: AnActionEvent) {
                     val project = e.project ?: return
                     val (commandLine, _) = generateTestsCommandLine(project)
