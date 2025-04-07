@@ -1,12 +1,14 @@
 package org.jetbrains.kotlin.test.helper.actions
 
 import com.intellij.codeInsight.navigation.PsiTargetNavigator
+import com.intellij.designer.actions.AbstractComboBoxAction
 import com.intellij.execution.Location
 import com.intellij.execution.PsiLocation
 import com.intellij.icons.AllIcons
-import com.intellij.ide.ui.laf.darcula.DarculaUIUtil
-import com.intellij.openapi.actionSystem.*
-import com.intellij.openapi.actionSystem.ex.ComboBoxAction
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
@@ -14,7 +16,6 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.ComboBox
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.parentsOfType
@@ -25,18 +26,17 @@ import org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration
 import org.jetbrains.kotlin.test.helper.buildRunnerLabel
 import org.jetbrains.kotlin.test.helper.runGradleCommandLine
 import org.jetbrains.kotlin.test.helper.ui.WidthAdjustingPanel
-import java.awt.Component
 import java.util.concurrent.Callable
-import javax.swing.*
+import javax.swing.BoxLayout
+import javax.swing.Icon
+import javax.swing.JComponent
+import javax.swing.JPanel
 
-class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction(), DumbAware {
+class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBoxAction<String>(), DumbAware {
     companion object {
         private val logger = Logger.getInstance(GeneratedTestComboBoxAction::class.java)
     }
 
-    private var box: ComboBox<List<AnAction>>? = null
-    private var boxModel: DefaultComboBoxModel<List<AnAction>>? = null
-    
     private val configuration = TestDataPathsConfiguration.getInstance(baseEditor.editor.project!!)
     private val testTags: Map<String, Array<String>>
         get() = configuration.testTags
@@ -46,63 +46,33 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
     val runAction = RunAction(0, "Run", AllIcons.Actions.Execute)
     val debugAction = RunAction(1, "Debug", AllIcons.Actions.StartDebugger)
 
-    val state: State = State().also { it.updateTestsList() }
+    val state: State = State()
 
-    override fun createPopupActionGroup(button: JComponent, dataContext: DataContext): DefaultActionGroup {
-        return DefaultActionGroup()
+    init {
+        state.updateTestsList()
+    }
+
+    override fun update(item: String?, presentation: Presentation, popup: Boolean) {
+        presentation.text = item
+    }
+
+    override fun selectionChanged(item: String?): Boolean {
+        state.currentChosenGroup = state.methodsClassNames.indexOf(item)
+        state.onSelectionUpdated()
+        return true
     }
 
     override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
-        val boxModel = DefaultComboBoxModel(state.debugAndRunActionLists.toTypedArray())
-        this.boxModel = boxModel
-        box = ComboBox(boxModel).apply {
-            isUsePreferredSizeAsMinimum = false
-            addActionListener {
-                item?.let { state.changeDebugAndRun(it) }
-            }
-            renderer = object : DefaultListCellRenderer() {
-                override fun getListCellRendererComponent(
-                    list: JList<*>?,
-                    value: Any?,
-                    index: Int,
-                    isSelected: Boolean,
-                    cellHasFocus: Boolean
-                ): Component {
-                    val component = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
-                    if (value != null) {
-                        val order = state.debugAndRunActionLists.indexOf(value)
-                        if (order in state.methodsClassNames.indices) {
-                            text = state.methodsClassNames[order]
-                        }
-                    }
-                    return component
-                }
-            }
-            putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true)
-            updateWidth()
-        }
-
-        val label = JBLabel("Tests: ")
-
         return WidthAdjustingPanel().apply {
             layout = BoxLayout(this, BoxLayout.X_AXIS)
-            add(label)
-            add(box)
+            add(JBLabel("Tests: "))
+            val panel = super.createCustomComponent(presentation, place) as JPanel
+            add(panel)
         }
     }
 
-    private fun ComboBox<List<AnAction>>.updateWidth() {
-        val maxTestName = state.methodsClassNames.maxByOrNull { it.length } ?: ""
-        setMinimumAndPreferredWidth(getFontMetrics(font).stringWidth(maxTestName) + 80)
-    }
-
-    private fun updateBox(chosenActionsList: List<AnAction>?) {
-        val boxModel = this.boxModel ?: return
-        val box = this.box ?: return
-        boxModel.removeAllElements()
-        boxModel.addAll(state.debugAndRunActionLists)
-        box.item = chosenActionsList
-        box.updateWidth()
+    private fun updateBox() {
+        setItems(state.methodsClassNames, state.methodsClassNames.elementAtOrNull(state.currentChosenGroup))
     }
 
     inner class State {
@@ -116,7 +86,6 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
             logger.info("task scheduled")
             methodsClassNames = emptyList()
             debugAndRunActionLists = emptyList()
-            updateBox(emptyList())
             ReadAction
                 .nonBlocking(Callable { createActionsForTestRunners().also { logger.info("actions created") } })
                 .inSmartMode(project)
@@ -203,19 +172,12 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : ComboBoxAction()
                 currentChosenGroup = it
             }
 
-            val chosenActionsList = debugAndRunActionLists.getOrNull(currentChosenGroup)
-            changeDebugAndRun(chosenActionsList)
-            updateBox(chosenActionsList)
+            onSelectionUpdated()
+            updateBox()
             logger.info("ui update finished")
         }
 
-
-        fun changeDebugAndRun(item: List<AnAction>?) {
-            if (item !in debugAndRunActionLists) {
-                logger.info("Actions not in list: $item")
-                return
-            }
-            currentChosenGroup = debugAndRunActionLists.indexOf(item)
+        fun onSelectionUpdated() {
             LastUsedTestService.getInstance(project)?.updateChosenRunner(topLevelDirectory, methodsClassNames[currentChosenGroup])
         }
     }

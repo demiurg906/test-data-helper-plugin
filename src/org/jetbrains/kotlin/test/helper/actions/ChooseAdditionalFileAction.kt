@@ -1,35 +1,29 @@
 package org.jetbrains.kotlin.test.helper.actions
 
+import com.intellij.designer.actions.AbstractComboBoxAction
 import com.intellij.diff.actions.BaseShowDiffAction
 import com.intellij.diff.actions.CompareFilesAction
 import com.intellij.diff.chains.DiffRequestChain
 import com.intellij.filename.UniqueNameBuilder
 import com.intellij.icons.AllIcons
-import com.intellij.ide.ui.laf.darcula.DarculaUIUtil
 import com.intellij.openapi.actionSystem.*
-import com.intellij.openapi.actionSystem.ex.ComboBoxAction
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.project.DumbAware
-import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBLabel
 import org.jetbrains.kotlin.test.helper.state.PreviewEditorState
 import org.jetbrains.kotlin.test.helper.ui.TestDataEditor
 import org.jetbrains.kotlin.test.helper.ui.WidthAdjustingPanel
-import java.awt.Component
 import java.io.File
 import javax.swing.*
 
 class ChooseAdditionalFileAction(
     private val testDataEditor: TestDataEditor,
     private val previewEditorState: PreviewEditorState
-) : ComboBoxAction(), DumbAware {
+) : AbstractComboBoxAction<FileEditor>(), DumbAware {
     companion object {
         private const val NO_NAME_PROVIDED = "## no name provided ##"
     }
-
-    private val files: Sequence<VirtualFile>
-        get() = previewEditorState.previewEditors.asSequence().mapNotNull { it.file }
 
     /**
      * If two or more files have the same name, we want to display the parts of their full paths that differ.
@@ -37,52 +31,12 @@ class ChooseAdditionalFileAction(
      */
     private var uniqueNameBuilder = createUniqueNameBuilder()
 
-    private val model: DefaultComboBoxModel<FileEditor> by lazy(LazyThreadSafetyMode.PUBLICATION) {
-        DefaultComboBoxModel(previewEditorState.previewEditors.toTypedArray())
-    }
-
     val diffAction by lazy(LazyThreadSafetyMode.PUBLICATION) {
         ShowDiffAction()
     }
 
-    private val box: ComboBox<FileEditor> by lazy(LazyThreadSafetyMode.PUBLICATION) {
-        ComboBox(model).apply {
-            isUsePreferredSizeAsMinimum = false
-            item = previewEditorState.currentPreview
-            updateBoxWidth()
-            addActionListener {
-                if (item != null) {
-                    previewEditorState.chooseNewEditor(item)
-                    testDataEditor.updatePreviewEditor()
-                }
-            }
-            renderer = object : DefaultListCellRenderer() {
-                override fun getListCellRendererComponent(
-                    list: JList<*>?,
-                    value: Any,
-                    index: Int,
-                    isSelected: Boolean,
-                    cellHasFocus: Boolean
-                ): Component {
-                    val originalComponent = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
-                    text = (value as? FileEditor).presentableName
-                    return originalComponent
-                }
-            }
-            putClientProperty(DarculaUIUtil.COMPACT_PROPERTY, true)
-        }
-    }
-
-    override fun createPopupActionGroup(button: JComponent, dataContext: DataContext): DefaultActionGroup {
-        return DefaultActionGroup()
-    }
-
-    private fun ComboBox<*>.updateBoxWidth() {
-        val fileNameWithMaxLength = previewEditorState.previewEditors
-            .map { it.presentableName }
-            .maxByOrNull { it.length }
-            ?: NO_NAME_PROVIDED
-        setMinimumAndPreferredWidth(getFontMetrics(font).stringWidth(fileNameWithMaxLength) + 80)
+    init {
+        updateBoxList()
     }
 
     override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
@@ -91,17 +45,12 @@ class ChooseAdditionalFileAction(
         return WidthAdjustingPanel().apply {
             layout = BoxLayout(this, BoxLayout.X_AXIS)
             add(label)
-            add(box)
+            add(super.createCustomComponent(presentation, place))
         }
     }
 
-    private fun createUniqueNameBuilder(): UniqueNameBuilder<VirtualFile>? {
-        val project = testDataEditor.editor.project ?: return null
-        val builder = UniqueNameBuilder<VirtualFile>(project.basePath, File.separator)
-        for (file in files) {
-            builder.addPath(file, file.path)
-        }
-        return builder
+    override fun update(item: FileEditor, presentation: Presentation, popup: Boolean) {
+        presentation.text = item.presentableName
     }
 
     private val FileEditor?.presentableName: String
@@ -112,12 +61,24 @@ class ChooseAdditionalFileAction(
             return uniqueNameBuilder?.getShortPath(file) ?: file.name
         }
 
+    override fun selectionChanged(item: FileEditor): Boolean {
+        previewEditorState.chooseNewEditor(item)
+        testDataEditor.updatePreviewEditor()
+        return true
+    }
+
+    private fun createUniqueNameBuilder(): UniqueNameBuilder<VirtualFile>? {
+        val project = testDataEditor.editor.project ?: return null
+        val builder = UniqueNameBuilder<VirtualFile>(project.basePath, File.separator)
+        for (file in previewEditorState.previewEditors.mapNotNull { it.file }) {
+            builder.addPath(file, file.path)
+        }
+        return builder
+    }
+
     fun updateBoxList() {
-        model.removeAllElements()
-        model.addAll(previewEditorState.previewEditors)
         uniqueNameBuilder = createUniqueNameBuilder()
-        box.item = previewEditorState.currentPreview
-        box.updateBoxWidth()
+        setItems(previewEditorState.previewEditors, previewEditorState.currentPreview)
     }
 
     inner class ShowDiffAction : AnAction(
@@ -130,7 +91,7 @@ class ChooseAdditionalFileAction(
                 override fun getDiffRequestChain(e: AnActionEvent): DiffRequestChain? {
                     val originalFile = testDataEditor.file ?: return null
                     val secondFile = previewEditorState.currentPreview.file ?: return null
-                    return BaseShowDiffAction.createMutableChainFromFiles(
+                    return createMutableChainFromFiles(
                         e.project,
                         originalFile,
                         secondFile,
