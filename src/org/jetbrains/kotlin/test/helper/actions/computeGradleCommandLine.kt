@@ -11,8 +11,6 @@ import kotlin.text.substringAfterLast
 import kotlin.text.substringBeforeLast
 
 fun computeGradleCommandLine(testMethods: List<PsiMethod>): String = buildString {
-    append("--continue ")
-
     testMethods
         .flatMap { testMethod ->
             val parentClass = testMethod.parentOfType<PsiClass>() ?: return@flatMap emptyList()
@@ -38,4 +36,6 @@ fun computeGradleCommandLine(testMethods: List<PsiMethod>): String = buildString
                 append(' ')
             }
         }
+
+    append(" --continue")
 }
