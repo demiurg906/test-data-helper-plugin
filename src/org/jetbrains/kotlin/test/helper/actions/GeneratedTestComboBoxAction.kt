@@ -178,7 +178,8 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
         }
 
         fun onSelectionUpdated() {
-            LastUsedTestService.getInstance(project)?.updateChosenRunner(topLevelDirectory, methodsClassNames[currentChosenGroup])
+            val runnerName = methodsClassNames.elementAtOrNull(currentChosenGroup) ?: return
+            LastUsedTestService.getInstance(project)?.updateChosenRunner(topLevelDirectory, runnerName)
         }
     }
 
