@@ -5,7 +5,6 @@ import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.runners.ExecutionEnvironment
-import com.intellij.icons.AllIcons
 import com.intellij.ide.structureView.StructureViewBuilder
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
@@ -15,7 +14,6 @@ import com.intellij.openapi.fileEditor.FileEditorLocation
 import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.fileEditor.FileEditorStateLevel
 import com.intellij.openapi.fileEditor.TextEditor
-import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Pair
@@ -120,12 +118,6 @@ class TestDataEditor(
     private fun createTestRunToolbar(): ActionToolbar {
         val generatedTestComboBoxAction = GeneratedTestComboBoxAction(baseEditor)
 
-        val reloadGeneratedTestsAction = object : AnAction("Reload Tests", "Reload Tests", AllIcons.Actions.Refresh), DumbAware {
-            override fun actionPerformed(e: AnActionEvent) {
-                generatedTestComboBoxAction.state.updateTestsList()
-            }
-        }
-
         val connection = baseEditor.editor.project?.messageBus?.connect(this)
 
         connection?.subscribe(DumbService.DUMB_MODE, object : DumbService.DumbModeListener {
@@ -151,7 +143,7 @@ class TestDataEditor(
                     generatedTestComboBoxAction.debugAction,
                     generatedTestComboBoxAction.goToAction,
                     generatedTestComboBoxAction.runAllTestsAction,
-                    reloadGeneratedTestsAction
+                    generatedTestComboBoxAction.moreActionsGroup
                 ),
                 true
             )

@@ -26,32 +26,35 @@ internal class ApplyFileDiffAction : DumbAwareAction() {
 
     override fun actionPerformed(e: AnActionEvent) {
         val tests = AbstractTestProxy.DATA_KEYS.getData(e.dataContext) ?: return
-
-        val diffs = tests.flatMap { test ->
-            if (test.isLeaf) {
-                test.diffViewerProviders
-            } else {
-                collectChildrenRecursively(test, mutableListOf())
-            }
-        }.distinct()
-
-        WriteAction.run<Throwable> {
-            for (diff in diffs) {
-                val filePath = diff.filePath ?: continue
-                val file = VfsUtil.findFile(Paths.get(filePath), true) ?: continue
-                file.writeText(diff.right)
-            }
-        }
+        applyDiffs(tests)
     }
+}
 
-    private fun collectChildrenRecursively(test: AbstractTestProxy, list: MutableList<DiffHyperlink>): List<DiffHyperlink> {
+fun applyDiffs(tests: Array<out AbstractTestProxy>) {
+    val diffs = tests.flatMap { test ->
         if (test.isLeaf) {
-            list.addAll(test.diffViewerProviders)
+            test.diffViewerProviders
         } else {
-            for (child in test.children) {
-                collectChildrenRecursively(child, list)
-            }
+            test.collectChildrenRecursively(mutableListOf())
         }
-        return list
+    }.distinct()
+
+    WriteAction.run<Throwable> {
+        for (diff in diffs) {
+            val filePath = diff.filePath ?: continue
+            val file = VfsUtil.findFile(Paths.get(filePath), true) ?: continue
+            file.writeText(diff.right)
+        }
     }
+}
+
+private fun AbstractTestProxy.collectChildrenRecursively(list: MutableList<DiffHyperlink>): List<DiffHyperlink> {
+    if (isLeaf) {
+        list.addAll(diffViewerProviders)
+    } else {
+        for (child in children) {
+            child.collectChildrenRecursively(list)
+        }
+    }
+    return list
 }

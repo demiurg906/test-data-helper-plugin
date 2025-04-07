@@ -2,6 +2,7 @@ package org.jetbrains.kotlin.test.helper
 
 import com.intellij.execution.ProgramRunnerUtil
 import com.intellij.execution.RunManager
+import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -115,20 +116,7 @@ fun runGradleCommandLine(
     title: String? = e.toFileNamesString()
 ) {
     val project = e.project ?: return
-    val settings = ExternalSystemTaskExecutionSettings().apply {
-        externalProjectPath = project.basePath
-        taskNames = fullCommandLine.split(" ")
-        externalSystemIdString = GradleConstants.SYSTEM_ID.id
-    }
-    val runSettings = ExternalSystemUtil.createExternalSystemRunnerAndConfigurationSettings(
-        settings,
-        project,
-        GradleConstants.SYSTEM_ID,
-    ) ?: return
-
-    if (title != null) {
-        runSettings.name = title
-    }
+    val runSettings = createGradleRunAndConfigurationSettings(project, fullCommandLine, title) ?: return
 
     ProgramRunnerUtil.executeConfiguration(
         runSettings,
@@ -141,6 +129,35 @@ fun runGradleCommandLine(
         runManager.setTemporaryConfiguration(runSettings)
     } else {
         runManager.selectedConfiguration = existingConfiguration
+    }
+}
+
+fun createGradleRunAndConfigurationSettings(
+    project: Project,
+    fullCommandLine: String,
+    title: String?
+): RunnerAndConfigurationSettings? {
+    val settings = createGradleExternalSystemTaskExecutionSettings(project, fullCommandLine)
+    val runSettings = ExternalSystemUtil.createExternalSystemRunnerAndConfigurationSettings(
+        settings,
+        project,
+        GradleConstants.SYSTEM_ID,
+    )
+
+    if (title != null) {
+        runSettings?.name = title
+    }
+    return runSettings
+}
+
+fun createGradleExternalSystemTaskExecutionSettings(
+    project: Project,
+    fullCommandLine: String
+): ExternalSystemTaskExecutionSettings {
+    return ExternalSystemTaskExecutionSettings().apply {
+        externalProjectPath = project.basePath
+        taskNames = fullCommandLine.split(" ")
+        externalSystemIdString = GradleConstants.SYSTEM_ID.id
     }
 }
 
