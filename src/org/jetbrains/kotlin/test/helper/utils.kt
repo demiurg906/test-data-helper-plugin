@@ -2,10 +2,10 @@ package org.jetbrains.kotlin.test.helper
 
 import com.intellij.execution.ProgramRunnerUtil
 import com.intellij.execution.RunManager
-import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.externalSystem.model.execution.ExternalSystemTaskExecutionSettings
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.Project
@@ -112,6 +112,7 @@ fun runGradleCommandLine(
     e: AnActionEvent,
     fullCommandLine: String,
     debug: Boolean,
+    title: String? = e.toFileNamesString()
 ) {
     val project = e.project ?: return
     val settings = ExternalSystemTaskExecutionSettings().apply {
@@ -125,6 +126,10 @@ fun runGradleCommandLine(
         GradleConstants.SYSTEM_ID,
     ) ?: return
 
+    if (title != null) {
+        runSettings.name = title
+    }
+
     ProgramRunnerUtil.executeConfiguration(
         runSettings,
         if (debug) DefaultDebugExecutor.getDebugExecutorInstance() else DefaultRunExecutor.getRunExecutorInstance()
@@ -137,6 +142,12 @@ fun runGradleCommandLine(
     } else {
         runManager.selectedConfiguration = existingConfiguration
     }
+}
+
+fun AnActionEvent.toFileNamesString(): String? {
+    return getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
+        ?.map { it.nameWithoutAllExtensions }?.distinct()
+        ?.joinToString(separator = ", ")
 }
 
 fun PsiClass.buildRunnerLabel(allTags: Map<String, Array<String>>): String {

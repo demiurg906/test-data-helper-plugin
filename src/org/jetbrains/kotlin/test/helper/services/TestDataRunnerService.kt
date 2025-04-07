@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.test.helper.actions.collectTestMethodsIfTestData
 import org.jetbrains.kotlin.test.helper.actions.computeGradleCommandLine
 import org.jetbrains.kotlin.test.helper.buildRunnerLabel
 import org.jetbrains.kotlin.test.helper.runGradleCommandLine
+import org.jetbrains.kotlin.test.helper.toFileNamesString
 import javax.swing.ListSelectionModel
 
 @Service(Service.Level.PROJECT)
@@ -78,7 +79,7 @@ class TestDataRunnerService(
                             }
 
                             withContext(Dispatchers.EDT) {
-                                runGradleCommandLine(e, commandLine, debug)
+                                runGradleCommandLine(e, commandLine, debug, title = e.toFileNamesString()?.let { "$selected: $it" })
                             }
                         }
 
