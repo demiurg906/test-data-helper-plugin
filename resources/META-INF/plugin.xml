@@ -31,34 +31,44 @@
     </extensions>
 
     <actions>
-        <action id="TestDataRunAllTestsSpecific" class="org.jetbrains.kotlin.test.helper.actions.RunSelectedFilesSpecificTestsAction"
-                text="Run Specific Tests" description="Run specific tests related to selected files"
-                icon="AllIcons.RunConfigurations.TestState.Run">
+        <group id="TestDataRunAllTestsSpecificGroup"
+               text="Run Specific Tests"
+               icon="AllIcons.RunConfigurations.Junit"
+               popup="true">
             <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
             <add-to-group group-id="ChangesViewPopupMenu" anchor="last"/>
             <add-to-group group-id="Vcs.Log.ChangesBrowser.Popup" anchor="last"/>
-        </action>
-        <action id="TestDataDebugAllTestsSpecific" class="org.jetbrains.kotlin.test.helper.actions.DebugSelectedFilesSpecificTestsAction"
-                text="Debug Specific Tests" description="Debug specific tests related to selected files"
-                icon="AllIcons.Actions.StartDebugger">
+
+            <action id="TestDataRunAllTestsSpecific"
+                    class="org.jetbrains.kotlin.test.helper.actions.RunSelectedFilesSpecificTestsAction"
+                    text="Run Specific Tests" description="Run specific tests related to selected files"
+                    icon="AllIcons.RunConfigurations.TestState.Run">
+            </action>
+            <action id="TestDataDebugAllTestsSpecific"
+                    class="org.jetbrains.kotlin.test.helper.actions.DebugSelectedFilesSpecificTestsAction"
+                    text="Debug Specific Tests" description="Debug specific tests related to selected files"
+                    icon="AllIcons.Actions.StartDebugger">
+            </action>
+        </group>
+
+        <group id="TestDataRunAllTestsGroup"
+               text="Run All Tests"
+               icon="AllIcons.RunConfigurations.Junit"
+               popup="true">
             <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
             <add-to-group group-id="ChangesViewPopupMenu" anchor="last"/>
             <add-to-group group-id="Vcs.Log.ChangesBrowser.Popup" anchor="last"/>
-        </action>
-        <action id="TestDataRunAllTests" class="org.jetbrains.kotlin.test.helper.actions.RunSelectedFilesTestsAction"
-                text="Run All Tests" description="Run all tests related to selected files"
-                icon="AllIcons.RunConfigurations.TestState.Run_run">
-            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
-            <add-to-group group-id="ChangesViewPopupMenu" anchor="last"/>
-            <add-to-group group-id="Vcs.Log.ChangesBrowser.Popup" anchor="last"/>
-        </action>
-        <action id="TestDataDebugAllTests" class="org.jetbrains.kotlin.test.helper.actions.DebugSelectedFilesTestsAction"
-                text="Debug All Tests" description="Debug all tests related to selected files"
-                icon="AllIcons.Actions.StartDebugger">
-            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
-            <add-to-group group-id="ChangesViewPopupMenu" anchor="last"/>
-            <add-to-group group-id="Vcs.Log.ChangesBrowser.Popup" anchor="last"/>
-        </action>
+            <action id="TestDataRunAllTests"
+                    class="org.jetbrains.kotlin.test.helper.actions.RunSelectedFilesTestsAction"
+                    text="Run All Tests" description="Run all tests related to selected files"
+                    icon="AllIcons.RunConfigurations.TestState.Run">
+            </action>
+            <action id="TestDataDebugAllTests"
+                    class="org.jetbrains.kotlin.test.helper.actions.DebugSelectedFilesTestsAction"
+                    text="Debug All Tests" description="Debug all tests related to selected files"
+                    icon="AllIcons.Actions.StartDebugger">
+            </action>
+        </group>
 
         <action id="RunAllChangesTests" class="org.jetbrains.kotlin.test.helper.actions.RunAllChangedTestsAction"
                 text="Run All Changed Tests"
