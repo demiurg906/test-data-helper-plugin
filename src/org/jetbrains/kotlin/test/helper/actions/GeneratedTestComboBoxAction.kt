@@ -50,6 +50,8 @@ import javax.swing.JPanel
 class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBoxAction<String>(), DumbAware {
     companion object {
         private val logger = Logger.getInstance(GeneratedTestComboBoxAction::class.java)
+        const val INDEX_RUN = 0
+        const val INDEX_DEBUG = 1
     }
 
     private val configuration = TestDataPathsConfiguration.getInstance(baseEditor.editor.project!!)
@@ -58,8 +60,8 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
 
     val runAllTestsAction: RunAllTestsAction = RunAllTestsAction()
     val goToAction: GoToDeclaration = GoToDeclaration()
-    val runAction = RunAction(0, "Run", AllIcons.Actions.Execute)
-    val debugAction = RunAction(1, "Debug", AllIcons.Actions.StartDebugger)
+    val runAction = RunAction(INDEX_RUN, "Run", AllIcons.Actions.Execute)
+    val debugAction = RunAction(INDEX_DEBUG, "Debug", AllIcons.Actions.StartDebugger)
     val moreActionsGroup = MoreActionsGroup()
 
     val state: State = State()
@@ -267,6 +269,12 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
                     runGradleCommandLine(e, commandLine, false, title)
                 }
             },
+            object : AnAction("Run Selected && Apply Diffs"), DumbAware {
+                override fun actionPerformed(e: AnActionEvent) {
+                    state.executeRunConfigAction(e, INDEX_RUN)
+                    awaitTestRunAndApplyDiffs(e.project ?: return)
+                }
+            },
             object : AnAction("Run All && Apply Diffs"), DumbAware {
                 override fun actionPerformed(e: AnActionEvent) {
                     runAllAndApplyDiff(e, delay = false)
@@ -318,21 +326,29 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
 
         private fun runAllAndApplyDiff(e: AnActionEvent, delay: Boolean) {
             val project = e.project ?: return
-            project.service<TestDataRunnerService>().collectAndRunAllTests(e, listOf(baseEditor.file), debug = false, delay = delay)
 
-            val connection = project.messageBus.connect(baseEditor)
-            connection
-                .subscribe(SMTRunnerEventsListener.TEST_STATUS, object: SMTRunnerEventsAdapter() {
-                    override fun onTestingFinished(testsRoot: SMTestProxy.SMRootTestProxy) {
-                        connection.disconnect()
-                        application.invokeLater { applyDiffs(arrayOf(testsRoot)) }
-                    }
-                })
+            runAllTests(e, delay)
+            awaitTestRunAndApplyDiffs(project)
         }
 
         override fun getChildren(e: AnActionEvent?): Array<AnAction> {
             return actions
         }
+    }
+
+    private fun runAllTests(e: AnActionEvent, delay: Boolean) {
+        e.project?.service<TestDataRunnerService>()?.collectAndRunAllTests(e, listOf(baseEditor.file), debug = false, delay = delay)
+    }
+
+    private fun awaitTestRunAndApplyDiffs(project: Project) {
+        val connection = project.messageBus.connect(baseEditor)
+        connection
+            .subscribe(SMTRunnerEventsListener.TEST_STATUS, object : SMTRunnerEventsAdapter() {
+                override fun onTestingFinished(testsRoot: SMTestProxy.SMRootTestProxy) {
+                    connection.disconnect()
+                    application.invokeLater { applyDiffs(arrayOf(testsRoot)) }
+                }
+            })
     }
 }
 
