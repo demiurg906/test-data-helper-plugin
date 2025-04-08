@@ -184,7 +184,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
             logger.info("ui update started")
             debugAndRunActionLists = classAndActions.map { it.second }
             methodsClassNames = classAndActions.map { it.first }
-            val lastUsedRunner = LastUsedTestService.getInstance(project)?.getLastUsedRunnerForFile(baseEditor.file!!)
+            val lastUsedRunner = LastUsedTestService.getInstance(project).getLastUsedRunnerForFile(baseEditor.file!!)
             methodsClassNames.indexOf(lastUsedRunner).takeIf { it in methodsClassNames.indices }?.let {
                 currentChosenGroup = it
             }
@@ -196,7 +196,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
 
         fun onSelectionUpdated() {
             val runnerName = methodsClassNames.elementAtOrNull(currentChosenGroup) ?: return
-            LastUsedTestService.getInstance(project)?.updateChosenRunner(topLevelDirectory, runnerName)
+            LastUsedTestService.getInstance(project).updateChosenRunner(topLevelDirectory, runnerName)
         }
     }
 
