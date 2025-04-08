@@ -69,8 +69,8 @@ class TestDataEditor(
 
     private val myToolbarWrapper: SplitToolbarPanel by lazy {
         fun ActionToolbar.updateConfig() {
-            setTargetComponent(splitter)
-            setReservePlaceAutoPopupIcon(false)
+            targetComponent = splitter
+            isReservePlaceAutoPopupIcon = false
         }
 
         val leftToolbar = createFileChooserToolbar().apply { updateConfig() }

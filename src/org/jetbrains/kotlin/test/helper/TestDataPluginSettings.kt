@@ -113,7 +113,7 @@ class TestDataPathsConfiguration : PersistentStateComponent<TestDataPathsConfigu
                     val testDataFileReplacement = baseFilePath.relativeTo(testDataSubdirPath).parent
                         ?.resolve(simpleNameUntilFirstDot)?.pathString
                         ?: simpleNameUntilFirstDot
-                    val actualSearchPath = searchPath.replace("\$TEST_DATA_FILE\$", testDataFileReplacement).trim()
+                    val actualSearchPath = searchPath.replace("\$TEST_DATA_FILE$", testDataFileReplacement).trim()
 
                     if (run(actualSearchPath))
                         return true

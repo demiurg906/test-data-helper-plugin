@@ -1,7 +1,6 @@
 package org.jetbrains.kotlin.test.helper.actions
 
 import com.intellij.designer.actions.AbstractComboBoxAction
-import com.intellij.diff.actions.BaseShowDiffAction
 import com.intellij.diff.actions.CompareFilesAction
 import com.intellij.diff.chains.DiffRequestChain
 import com.intellij.filename.UniqueNameBuilder

@@ -27,7 +27,7 @@ private val DIGIT_REGEX = """\d+""".toRegex()
 
 val VirtualFile.simpleNameUntilFirstDot: String
     get() {
-        var processingFirst: Boolean = true
+        var processingFirst = true
         val parts = buildList {
             for (part in name.split(".")) {
                 val isNumber = DIGIT_REGEX.matches(part)
