@@ -116,7 +116,6 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
             logger.info("task started")
 
             val testMethods = file.collectTestMethodsIfTestData(project)
-            runAllTestsAction.computeTasksToRun(testMethods)
             goToAction.testMethods = testMethods
             logger.info("methods collected")
 
@@ -232,14 +231,8 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
         "Run all tests via gradle",
         AllIcons.RunConfigurations.Junit
     ), DumbAware {
-        private var commandLine = ""
-
-        fun computeTasksToRun(testMethods: List<PsiMethod>) {
-            commandLine = computeGradleCommandLine(testMethods)
-        }
-
         override fun actionPerformed(e: AnActionEvent) {
-            runGradleCommandLine(e, commandLine, false,)
+            runAllTests(e, delay = false)
         }
     }
 
