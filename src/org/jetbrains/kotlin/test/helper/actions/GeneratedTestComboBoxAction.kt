@@ -269,7 +269,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
             },
             object : AnAction("Run All && Apply Diffs"), DumbAware {
                 override fun actionPerformed(e: AnActionEvent) {
-                    runAllAndApplyDiff(e)
+                    runAllAndApplyDiff(e, delay = false)
                 }
             },
             object : AnAction("Generate Tests, Run All && Apply Diffs"), DumbAware {
@@ -288,7 +288,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
                             .withActivateToolWindowBeforeRun(true)
                             .withCallback(object : TaskCallback {
                                 override fun onSuccess() {
-                                    runAllAndApplyDiff(e)
+                                    runAllAndApplyDiff(e, delay = true)
                                 }
 
                                 override fun onFailure() {
@@ -316,9 +316,9 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
             return VfsUtil.isAncestor(file, baseEditor.file, false)
         }
 
-        private fun runAllAndApplyDiff(e: AnActionEvent) {
+        private fun runAllAndApplyDiff(e: AnActionEvent, delay: Boolean) {
             val project = e.project ?: return
-            project.service<TestDataRunnerService>().collectAndRunAllTests(e, listOf(baseEditor.file), debug = false)
+            project.service<TestDataRunnerService>().collectAndRunAllTests(e, listOf(baseEditor.file), debug = false, delay = delay)
 
             val connection = project.messageBus.connect(baseEditor)
             connection

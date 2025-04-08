@@ -14,6 +14,7 @@ import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.parentsOfType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration
@@ -23,16 +24,19 @@ import org.jetbrains.kotlin.test.helper.buildRunnerLabel
 import org.jetbrains.kotlin.test.helper.runGradleCommandLine
 import org.jetbrains.kotlin.test.helper.toFileNamesString
 import javax.swing.ListSelectionModel
+import kotlin.time.Duration.Companion.seconds
 
 @Service(Service.Level.PROJECT)
 class TestDataRunnerService(
     val project: Project,
     val scope: CoroutineScope
 ) {
-    fun collectAndRunAllTests(e: AnActionEvent, files: List<VirtualFile>?, debug: Boolean) {
+    fun collectAndRunAllTests(e: AnActionEvent, files: List<VirtualFile>?, debug: Boolean, delay: Boolean = false) {
         if (files == null) return
 
         scope.launch(Dispatchers.Default) {
+            if (delay) delay(1.seconds)
+
             val commandLine = withBackgroundProgress(project, title = "Running all tests") {
                 reportSequentialProgress { reporter ->
                     reporter.indeterminateStep("Collecting tests")
