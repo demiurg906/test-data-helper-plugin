@@ -10,7 +10,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.platform.util.progress.reportSequentialProgress
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.util.parentsOfType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,8 +42,8 @@ class TestDataRunnerService(
                     reporter.indeterminateStep("Collecting tests")
 
                     smartReadAction(project) {
-                        val testMethods = filterAndCollectTestMethods(files)
-                        computeGradleCommandLine(testMethods)
+                        val testDeclarations = filterAndCollectTestDeclarations(files)
+                        computeGradleCommandLine(testDeclarations)
                     }
                 }
             }
@@ -61,9 +61,9 @@ class TestDataRunnerService(
                     reporter.indeterminateStep("Collecting tests")
 
                     smartReadAction(project) {
-                        val testMethods = filterAndCollectTestMethods(files)
+                        val testDeclarations = filterAndCollectTestDeclarations(files)
                         val testTags = TestDataPathsConfiguration.getInstance(project).testTags
-                        testMethods
+                        testDeclarations
                             .groupBy { it.parentsOfType<PsiClass>().last() }
                             .mapKeys { it.key.buildRunnerLabel(testTags) }
                     }
@@ -96,7 +96,7 @@ class TestDataRunnerService(
         }
     }
 
-    fun filterAndCollectTestMethods(files: List<VirtualFile>?): List<PsiMethod> {
+    fun filterAndCollectTestDeclarations(files: List<VirtualFile>?): List<PsiNameIdentifierOwner> {
         if (files == null) return emptyList()
         return files.flatMap { it.collectTestMethodsIfTestData(project) }
     }

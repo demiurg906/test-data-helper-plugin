@@ -79,14 +79,19 @@ private val supportedExtensions = listOf("kt", "kts", "args", "nkt")
 enum class TestDataType {
     File,
     Directory,
+    DirectoryOfFiles,
 }
 
 fun VirtualFile.getTestDataType(project: Project): TestDataType? {
     val configuration = TestDataPathsConfiguration.getInstance(project)
-    val filePath = path
-    if (configuration.testDataDirectories.any { filePath.startsWith(it) }) return TestDataType.Directory
-    if (extension !in supportedExtensions) return null
-    if (configuration.testDataFiles.any { filePath.startsWith(it) }) return TestDataType.File
+    if (configuration.testDataDirectories.any { path.startsWith(it) }) return TestDataType.Directory
+    if (configuration.testDataFiles.any { path.startsWith(it) }) {
+        return when {
+            extension in supportedExtensions -> TestDataType.File
+            isDirectory -> TestDataType.DirectoryOfFiles
+            else -> null
+        }
+    }
     return null
 }
 

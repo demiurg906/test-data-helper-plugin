@@ -2,6 +2,7 @@ package org.jetbrains.kotlin.test.helper.actions
 
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.util.parentOfType
 import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestRunConfigurationProducer
 import org.jetbrains.plugins.gradle.util.createTestFilterFrom
@@ -10,13 +11,13 @@ import kotlin.collections.component2
 import kotlin.text.substringAfterLast
 import kotlin.text.substringBeforeLast
 
-fun computeGradleCommandLine(testMethods: List<PsiMethod>): String = buildString {
-    testMethods
-        .flatMap { testMethod ->
-            val parentClass = testMethod.parentOfType<PsiClass>() ?: return@flatMap emptyList()
-            val taskArguments = createTestFilterFrom(parentClass, testMethod.name)
-            val virtualFile = testMethod.containingFile?.virtualFile ?: return@flatMap emptyList()
-            val allTasks = GradleTestRunConfigurationProducer.findAllTestsTaskToRun(virtualFile, testMethod.project)
+fun computeGradleCommandLine(testDeclarations: List<PsiNameIdentifierOwner>): String = buildString {
+    testDeclarations
+        .flatMap { psi ->
+            val parentClass = psi as? PsiClass ?: psi.parentOfType<PsiClass>() ?: return@flatMap emptyList()
+            val taskArguments = createTestFilterFrom(parentClass, (psi as? PsiMethod)?.name)
+            val virtualFile = psi.containingFile?.virtualFile ?: return@flatMap emptyList()
+            val allTasks = GradleTestRunConfigurationProducer.findAllTestsTaskToRun(virtualFile, psi.project)
                 .flatMap { it.tasks }
             allTasks
                 .map {

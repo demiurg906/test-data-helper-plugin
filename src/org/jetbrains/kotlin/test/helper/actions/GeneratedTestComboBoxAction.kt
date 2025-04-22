@@ -27,7 +27,7 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.util.parentsOfType
 import com.intellij.testIntegration.TestRunLineMarkerProvider
 import com.intellij.ui.components.JBLabel
@@ -115,11 +115,11 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
             val file = baseEditor.file ?: return emptyList() // TODO: log
             logger.info("task started")
 
-            val testMethods = file.collectTestMethodsIfTestData(project)
-            goToAction.testMethods = testMethods
+            val testDeclarations = file.collectTestMethodsIfTestData(project)
+            goToAction.testMethods = testDeclarations
             logger.info("methods collected")
 
-            topLevelDirectory = testMethods.firstNotNullOfOrNull { method ->
+            topLevelDirectory = testDeclarations.firstNotNullOfOrNull { method ->
                 method.parentsOfType(PsiClass::class.java)
                     .toList()
                     .asReversed()
@@ -127,7 +127,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
             }
 
             val ex = TestRunLineMarkerProvider()
-            return testMethods.mapNotNull { testMethod ->
+            return testDeclarations.mapNotNull { testMethod ->
                 val identifier = testMethod.nameIdentifier ?: return@mapNotNull null
                 val info = ex.getInfo(identifier) ?: return@mapNotNull null
                 val allActions = info.actions
@@ -218,7 +218,7 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
         "Go to test method declaration",
         AllIcons.Nodes.Method
     ), DumbAware {
-        var testMethods: List<PsiMethod> = emptyList()
+        var testMethods: List<PsiNameIdentifierOwner> = emptyList()
 
         override fun actionPerformed(e: AnActionEvent) {
             PsiTargetNavigator { testMethods }.navigate(baseEditor.editor, "")
