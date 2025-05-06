@@ -74,7 +74,7 @@ fun glob(searchPattern: String, run: (Path) -> Unit) {
     )
 }
 
-private val supportedExtensions = listOf("kt", "kts", "args", "nkt")
+private val supportedExtensions = listOf("kt", "kts", "args", "can-freeze-ide")
 
 enum class TestDataType {
     File,
