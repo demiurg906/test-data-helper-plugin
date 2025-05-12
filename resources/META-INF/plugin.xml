@@ -38,6 +38,7 @@
             <add-to-group group-id="ChangesViewPopupMenu" anchor="last"/>
             <add-to-group group-id="Vcs.Log.ChangesBrowser.Popup" anchor="last"/>
             <add-to-group group-id="NavbarPopupMenu" anchor="last"/>
+            <add-to-group group-id="UsageView.Popup" anchor="last"/>
 
             <action id="TestDataRunAllTestsSpecific"
                     class="org.jetbrains.kotlin.test.helper.actions.RunSelectedFilesSpecificTestsAction"
@@ -59,6 +60,7 @@
             <add-to-group group-id="ChangesViewPopupMenu" anchor="last"/>
             <add-to-group group-id="Vcs.Log.ChangesBrowser.Popup" anchor="last"/>
             <add-to-group group-id="NavbarPopupMenu" anchor="last"/>
+            <add-to-group group-id="UsageView.Popup" anchor="last"/>
 
             <action id="TestDataRunAllTests"
                     class="org.jetbrains.kotlin.test.helper.actions.RunSelectedFilesTestsAction"
