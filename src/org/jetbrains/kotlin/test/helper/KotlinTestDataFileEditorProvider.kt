@@ -22,7 +22,7 @@ class KotlinTestDataFileEditorProvider: AsyncFileEditorProvider, DumbAware {
 
     override fun getEditorTypeId(): String = "Kotlin TestData Editor"
 
-    override fun getPolicy(): FileEditorPolicy = FileEditorPolicy.PLACE_AFTER_DEFAULT_EDITOR
+    override fun getPolicy(): FileEditorPolicy = FileEditorPolicy.PLACE_BEFORE_DEFAULT_EDITOR
 
     override fun createEditorAsync(project: Project, file: VirtualFile): AsyncFileEditorProvider.Builder {
         return object: AsyncFileEditorProvider.Builder() {
