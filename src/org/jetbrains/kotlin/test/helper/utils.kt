@@ -167,8 +167,11 @@ fun createGradleExternalSystemTaskExecutionSettings(
 }
 
 fun AnActionEvent.toFileNamesString(): String? {
+    val project = project ?: return null
     return getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
-        ?.map { it.nameWithoutAllExtensions }?.distinct()
+        ?.filter { it.getTestDataType(project) != null }
+        ?.map { it.nameWithoutAllExtensions }
+        ?.distinct()
         ?.joinToString(separator = ", ")
 }
 
