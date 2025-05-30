@@ -13,7 +13,7 @@ plugins {
     // Kotlin support
     id("org.jetbrains.kotlin.jvm") version "2.0.20"
     // gradle-intellij-plugin - read more: https://github.com/JetBrains/gradle-intellij-plugin
-    id("org.jetbrains.intellij.platform") version "2.0.1"
+    id("org.jetbrains.intellij.platform") version "2.6.0"
     // gradle-changelog-plugin - read more: https://github.com/JetBrains/gradle-changelog-plugin
     id("org.jetbrains.changelog") version "2.2.1"
     // detekt linter - read more: https://detekt.github.io/detekt/gradle.html
@@ -38,7 +38,6 @@ dependencies {
         create(properties("platformType"), properties("platformVersion"))
         bundledPlugins(properties("platformPlugins").split(',').map(String::trim).filter(String::isNotEmpty))
         pluginVerifier()
-        instrumentationTools()
     }
     testImplementation(kotlin("test"))
 }
@@ -99,15 +98,15 @@ detekt {
 
 tasks {
     withType<JavaCompile> {
-        sourceCompatibility = "17"
-        targetCompatibility = "17"
+        sourceCompatibility = "21"
+        targetCompatibility = "21"
     }
     withType<KotlinCompile> {
-        compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
     }
 
     withType<Detekt> {
-        jvmTarget = "17"
+        jvmTarget = "21"
         reports {
             html.required.set(false)
             xml.required.set(false)
