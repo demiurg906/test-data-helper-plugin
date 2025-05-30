@@ -147,12 +147,13 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
                             }.build()
 
                             val newEvent = AnActionEvent(
-                                e.inputEvent,
                                 dataContext,
-                                e.place,
                                 e.presentation,
+                                e.place,
+                                e.uiKind,
+                                e.inputEvent,
+                                e.modifiers,
                                 e.actionManager,
-                                e.modifiers
                             )
                             it.actionPerformed(newEvent)
                         }
