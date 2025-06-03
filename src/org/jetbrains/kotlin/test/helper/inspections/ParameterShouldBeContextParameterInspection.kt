@@ -110,7 +110,7 @@ class ParameterShouldBeContextParameterInspection : LocalInspectionTool() {
             val processor = SafeDeleteProcessor.createInstance(
                 project,
                 null,
-                newFunction.valueParameters.filterIndexed { i,x -> i in indices }.toTypedArray(),
+                newFunction.valueParameters.filterIndexed { i, _ -> i in indices }.toTypedArray(),
                 false,
                 false,
                 false
