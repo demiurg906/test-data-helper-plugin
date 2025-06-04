@@ -48,6 +48,9 @@ intellijPlatform {
     pluginConfiguration {
         name = properties("pluginName")
         version = properties("pluginVersion")
+        vendor {
+            name = "JetBrains"
+        }
         changeNotes = provider { changelog.renderItem(changelog.getLatest(), Changelog.OutputType.HTML) }
 
         // Extract the <!-- Plugin description --> section from README.md and provide for the plugin's manifest

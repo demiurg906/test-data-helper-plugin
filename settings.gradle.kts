@@ -1,1 +1,1 @@
-rootProject.name = "test-data-helper-plugin"
+rootProject.name = "kotlin-compiler-devkit"
