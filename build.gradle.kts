@@ -5,7 +5,16 @@ import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
-fun properties(key: String) = project.findProperty(key).toString()
+val pluginGroup: String by extra
+val pluginVersion: String by extra
+val pluginName: String by extra
+val platformType: String by extra
+val platformVersion: String by extra
+val platformPlugins: String by extra
+val pluginSinceBuild: String by extra
+val pluginUntilBuild: String by extra
+val pluginVerifierIdeVersions: String by extra
+val publishingToken: String by extra
 
 plugins {
     // Java support
@@ -22,8 +31,8 @@ plugins {
     id("org.jlleitschuh.gradle.ktlint") version "12.1.1"
 }
 
-group = properties("pluginGroup")
-version = properties("pluginVersion")
+group = pluginGroup
+version = pluginVersion
 
 // Configure project's dependencies
 repositories {
@@ -35,8 +44,8 @@ repositories {
 dependencies {
     detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.19.0")
     intellijPlatform {
-        create(properties("platformType"), properties("platformVersion"))
-        bundledPlugins(properties("platformPlugins").split(',').map(String::trim).filter(String::isNotEmpty))
+        create(platformType, platformVersion)
+        bundledPlugins(platformPlugins.split(',').map(String::trim).filter(String::isNotEmpty))
         pluginVerifier()
     }
     testImplementation(kotlin("test"))
@@ -46,8 +55,8 @@ dependencies {
 // Read more: https://github.com/JetBrains/gradle-intellij-plugin
 intellijPlatform {
     pluginConfiguration {
-        name = properties("pluginName")
-        version = properties("pluginVersion")
+        name = pluginName
+        version = pluginVersion
         vendor {
             name = "JetBrains"
         }
@@ -67,13 +76,14 @@ intellijPlatform {
         }.joinToString("\n").run { markdownToHTML(this) }
 
         ideaVersion {
-            sinceBuild = properties("pluginSinceBuild")
-            untilBuild = properties("pluginUntilBuild")
+            sinceBuild = pluginSinceBuild
+            untilBuild = pluginUntilBuild
         }
     }
+
     pluginVerification {
         ides {
-            properties("pluginVerifierIdeVersions")
+            pluginVerifierIdeVersions
                 .split(',')
                 .map(String::trim)
                 .filter(String::isNotEmpty)
@@ -83,15 +93,16 @@ intellijPlatform {
         }
         freeArgs = listOf("-mute", "ForbiddenPluginIdPrefix") // The 'org.jetbrains' prefix is normally not allowed
     }
+
     publishing {
-        token = properties("publishingToken")
+        token = publishingToken
     }
 }
 
 // Configure gradle-changelog-plugin plugin.
 // Read more: https://github.com/JetBrains/gradle-changelog-plugin
 changelog {
-    version.set(properties("pluginVersion"))
+    version.set(pluginVersion)
     groups.set(emptyList())
 }
 
@@ -109,6 +120,7 @@ tasks {
     }
     withType<KotlinCompile> {
         compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
+        compilerOptions.freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn")
     }
 
     withType<Detekt> {
@@ -119,19 +131,6 @@ tasks {
             txt.required.set(false)
         }
     }
-
-    publishPlugin {
-        dependsOn("patchChangelog")
-        token.set(System.getenv("PUBLISH_TOKEN"))
-        // pluginVersion is based on the SemVer (https://semver.org) and supports pre-release labels, like 2.1.7-alpha.3
-        // Specify pre-release label to publish the plugin in a custom Release Channel automatically. Read more:
-        // https://plugins.jetbrains.com/docs/intellij/deployment.html#specifying-a-release-channel
-        channels.set(listOf(properties("pluginVersion").split('-').getOrElse(1) { "default" }.split('.').first()))
-    }
-}
-
-(tasks["runIde"] as JavaExec).apply {
-    maxHeapSize = "3g"
 }
 
 sourceSets {
@@ -144,6 +143,6 @@ sourceSets {
     }
 }
 
-tasks.withType<KotlinCompile>().forEach {
-    it.compilerOptions.freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn")
+(tasks["runIde"] as JavaExec).apply {
+    maxHeapSize = "3g"
 }
