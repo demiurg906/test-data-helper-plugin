@@ -83,6 +83,9 @@ intellijPlatform {
         }
         freeArgs = listOf("-mute", "ForbiddenPluginIdPrefix") // The 'org.jetbrains' prefix is normally not allowed
     }
+    publishing {
+        token = properties("publishingToken")
+    }
 }
 
 // Configure gradle-changelog-plugin plugin.
