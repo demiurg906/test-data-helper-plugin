@@ -1,7 +1,7 @@
 # Kotlin Compiler DevKit
 
-[![Version](https://img.shields.io/jetbrains/plugin/v/17620.svg)](https://plugins.jetbrains.com/plugin/17620)
-[![Downloads](https://img.shields.io/jetbrains/plugin/d/17620.svg)](https://plugins.jetbrains.com/plugin/17620)
+[![Version](https://img.shields.io/jetbrains/plugin/v/27550.svg)](https://plugins.jetbrains.com/plugin/17620)
+[![Downloads](https://img.shields.io/jetbrains/plugin/d/27550.svg)](https://plugins.jetbrains.com/plugin/17620)
 
 <!-- Plugin description -->
 
@@ -54,12 +54,6 @@ toolbar. The toolbar also includes:
 
 <!-- Plugin description end -->
 
-To receive automatic updates, add the following custom plugin repository URL in IntelliJ IDEA _Settings | Plugins | ⚙️ | Manage Plugin Repositories:_
-
-```
-https://teamcity.jetbrains.com/guestAuth/app/rest/builds/buildType:(id:Kotlin_KotlinCompilerTestHelper_BuildPlugin),status:success,count:1/artifacts/content/updatePlugins.xml
-``` 
-
 #### Running Tests from Arbitrary Modules
 
 The plugin adds a Run Anything provider that introduces a command `testGlobally`.
@@ -78,7 +72,7 @@ represents the source set root which is always present for every source set.
 
 ### Build plugin from sources
 
-The following command will build the plugin distribution to a file like `./build/distributions/TestHelper-0.0.19.zip`:
+The following command will build the plugin distribution to a file like `./build/distributions/kotlin-compiler-devkit-1.0.999-SNAPSHOT.zip`:
 
 ```shell
 ./gradlew buildPlugin
