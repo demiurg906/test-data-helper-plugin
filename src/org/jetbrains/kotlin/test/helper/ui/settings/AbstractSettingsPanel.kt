@@ -6,9 +6,11 @@ import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.ui.PanelWithButtons
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
+import org.gradle.platform.base.Application
 import java.util.Arrays
 import javax.swing.JButton
 import javax.swing.ListSelectionModel
+import javax.swing.SwingUtilities
 import javax.swing.table.AbstractTableModel
 import javax.swing.table.TableCellRenderer
 
@@ -82,7 +84,7 @@ abstract class AbstractSettingsPanel<T> : PanelWithButtons() {
         if (indexToSelect >= 0) {
             myTable.setRowSelectionInterval(indexToSelect, indexToSelect)
         }
-        IdeFocusManager.getGlobalInstance().doWhenFocusSettlesDown {
+        SwingUtilities.invokeLater {
             IdeFocusManager.getGlobalInstance().requestFocus(
                 myTable, true
             )

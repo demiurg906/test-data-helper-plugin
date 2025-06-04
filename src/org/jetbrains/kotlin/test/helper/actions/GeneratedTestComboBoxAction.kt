@@ -14,6 +14,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.Presentation
+import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
@@ -178,7 +179,8 @@ class GeneratedTestComboBoxAction(val baseEditor: TextEditor) : AbstractComboBox
         }
 
         internal fun executeRunConfigAction(e: AnActionEvent, index: Int) {
-            debugAndRunActionLists.elementAtOrNull(currentChosenGroup)?.elementAtOrNull(index)?.actionPerformed(e)
+            val action = debugAndRunActionLists.elementAtOrNull(currentChosenGroup)?.elementAtOrNull(index) ?: return
+            ActionUtil.performActionDumbAwareWithCallbacks(action, e)
         }
 
         private fun updateUiAccordingCollectedTests(classAndActions: List<Pair<String, List<AnAction>>>) {

@@ -33,7 +33,6 @@ class SplitToolbarPanel(
   }
 
   fun refresh() {
-    rightToolbar.updateActionsImmediately()
+    rightToolbar.updateActionsAsync()
   }
-
 }
