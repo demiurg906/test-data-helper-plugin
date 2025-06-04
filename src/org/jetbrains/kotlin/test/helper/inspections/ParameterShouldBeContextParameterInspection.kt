@@ -30,6 +30,7 @@ class ParameterShouldBeContextParameterInspection : LocalInspectionTool() {
         return object : KtVisitorVoid() {
             override fun visitNamedFunction(function: KtNamedFunction) {
                 super.visitNamedFunction(function)
+                if (relevantTypes.isEmpty()) return
                 analyze(function) {
                     val symbol = function.symbol
 
