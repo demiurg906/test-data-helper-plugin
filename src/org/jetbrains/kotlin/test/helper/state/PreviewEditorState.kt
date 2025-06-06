@@ -5,7 +5,6 @@ import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileEditor.impl.text.TextEditorProvider
 import com.intellij.openapi.util.Disposer
-import com.intellij.util.SlowOperations
 import org.jetbrains.kotlin.test.helper.TestDataPathsConfiguration
 import org.jetbrains.kotlin.test.helper.simpleNameUntilFirstDot
 
@@ -57,8 +56,8 @@ class PreviewEditorState(
         val relatedFiles = file.parent.children.filter { it.name.startsWith("$curFileName.") } +
                 configuration.findAdditionalRelatedFiles(file, curFileName)
 
-        return SlowOperations.allowSlowOperations<List<FileEditor>, Throwable> {
-             relatedFiles.map { TextEditorProvider.getInstance().createEditor(project, it).also { Disposer.register(parent, it) } }
+        return relatedFiles.map {
+            TextEditorProvider.getInstance().createEditor(project, it).also { Disposer.register(parent, it) }
         }
     }
 }
