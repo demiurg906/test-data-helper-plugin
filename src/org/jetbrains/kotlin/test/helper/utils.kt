@@ -8,10 +8,13 @@ import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.externalSystem.model.execution.ExternalSystemTaskExecutionSettings
+import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiClass
+import org.jetbrains.plugins.gradle.settings.GradleLocalSettings
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.File
 import java.io.IOException
@@ -160,7 +163,10 @@ fun createGradleExternalSystemTaskExecutionSettings(
     fullCommandLine: String
 ): ExternalSystemTaskExecutionSettings {
     return ExternalSystemTaskExecutionSettings().apply {
-        externalProjectPath = project.basePath
+        val localSettings =
+            ExternalSystemApiUtil.getLocalSettings<GradleLocalSettings>(project, GradleConstants.SYSTEM_ID)
+        externalProjectPath =
+            localSettings.availableProjects.keys.firstOrNull()?.let { FileUtil.toCanonicalPath(it.path) }
         taskNames = fullCommandLine.split(" ")
         externalSystemIdString = GradleConstants.SYSTEM_ID.id
     }
