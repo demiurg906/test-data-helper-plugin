@@ -8,6 +8,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 val pluginGroup: String by extra
 val pluginVersion: String by extra
 val pluginName: String by extra
+val pluginId: String by extra
 val platformType: String by extra
 val platformVersion: String by extra
 val platformPlugins: String by extra
@@ -55,6 +56,7 @@ dependencies {
 // Read more: https://github.com/JetBrains/gradle-intellij-plugin
 intellijPlatform {
     pluginConfiguration {
+        id = pluginId
         name = pluginName
         version = pluginVersion
         vendor {
