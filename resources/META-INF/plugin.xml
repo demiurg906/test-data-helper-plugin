@@ -25,6 +25,12 @@
                          enabledByDefault="true"
                          level="WARNING"
                          implementationClass="org.jetbrains.kotlin.test.helper.inspections.ParameterShouldBeContextParameterInspection"/>
+
+        <postStartupActivity implementation="org.jetbrains.kotlin.test.helper.inspections.OldPluginInstalledWarner"/>
+        <notificationGroup id="Kotlin Compiler DevKit Notifications"
+          displayType="BALLOON"
+          key="compiler.devkit.notificatons"/>
+
     </extensions>
 
     <extensions defaultExtensionNs="org.jetbrains.kotlin">
