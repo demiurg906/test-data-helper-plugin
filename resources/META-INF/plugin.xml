@@ -19,17 +19,17 @@
         <runAnything.executionProvider implementation="org.jetbrains.kotlin.test.helper.runAnything.TestGloballyRunAnythingProvider"
                                        order="first"/>
 
-        <localInspection language="kotlin" 
-                         displayName="Function has Parameter that Should be a Context Parameter"
+        <localInspection language="kotlin"
                          groupName="Kotlin"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="org.jetbrains.kotlin.test.helper.inspections.ParameterShouldBeContextParameterInspection"/>
+                         implementationClass="org.jetbrains.kotlin.test.helper.inspections.ParameterShouldBeContextParameterInspection"
+                         key="inspection.parameter.should.be.context.parameter.display.name"/>
 
         <postStartupActivity implementation="org.jetbrains.kotlin.test.helper.inspections.OldPluginInstalledWarner"/>
         <notificationGroup id="Kotlin Compiler DevKit Notifications"
           displayType="BALLOON"
-          key="compiler.devkit.notificatons"/>
+          key="compiler.devkit.notifications"/>
 
     </extensions>
 
