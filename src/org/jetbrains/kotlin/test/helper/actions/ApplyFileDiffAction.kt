@@ -8,8 +8,10 @@ import com.intellij.execution.testframework.stacktrace.DiffHyperlink
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.fileEditor.impl.LoadTextUtil
 import com.intellij.openapi.progress.EmptyProgressIndicator
 import com.intellij.openapi.project.DumbAwareAction
+import com.intellij.openapi.util.text.StringUtilRt
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.writeText
 import java.nio.file.Paths
@@ -44,20 +46,25 @@ fun applyDiffs(tests: Array<out AbstractTestProxy>) {
         for ((filePath, diffs) in diffsByFile) {
             if (filePath == null) continue
             val file = VfsUtil.findFile(Paths.get(filePath), true) ?: continue
+            val lineSeparator = LoadTextUtil.detectLineSeparator(file, true) ?: "\n"
 
             val result =  if (diffs.size == 1) {
-                diffs.single().right
+                StringUtilRt.convertLineSeparators(diffs.single().right, lineSeparator)
             } else {
                 val first = diffs.first()
                 val base = first.left
                 diffs
                     .windowed(2)
                     .fold(first.right) { acc, (_, right) ->
-                        autoMerge(left = acc, base = base, right = right.right)
+                        autoMerge(
+                            left = StringUtilRt.convertLineSeparators(acc, lineSeparator),
+                            base = StringUtilRt.convertLineSeparators(base, lineSeparator),
+                            right = StringUtilRt.convertLineSeparators(right.right, lineSeparator)
+                        )
                     }
             }
 
-            file.writeText(result)
+            file.writeText(StringUtilRt.convertLineSeparators(result, lineSeparator))
         }
     }
 }
