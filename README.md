@@ -1,7 +1,7 @@
 # Kotlin Compiler DevKit
 
-[![Version](https://img.shields.io/jetbrains/plugin/v/27616.svg)](https://plugins.jetbrains.com/plugin/27550)
-[![Downloads](https://img.shields.io/jetbrains/plugin/d/27616.svg)](https://plugins.jetbrains.com/plugin/27550)
+[![Version](https://img.shields.io/jetbrains/plugin/v/27616.svg)](https://plugins.jetbrains.com/plugin/27616)
+[![Downloads](https://img.shields.io/jetbrains/plugin/d/27616.svg)](https://plugins.jetbrains.com/plugin/27616)
 
 <!-- Plugin description -->
 
