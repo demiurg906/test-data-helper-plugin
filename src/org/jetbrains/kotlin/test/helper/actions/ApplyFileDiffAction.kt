@@ -1,10 +1,14 @@
 package org.jetbrains.kotlin.test.helper.actions
 
+import com.intellij.diff.comparison.ComparisonManager
+import com.intellij.diff.comparison.ComparisonPolicy
+import com.intellij.diff.util.ThreeSide
 import com.intellij.execution.testframework.AbstractTestProxy
 import com.intellij.execution.testframework.stacktrace.DiffHyperlink
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.progress.EmptyProgressIndicator
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.writeText
@@ -31,19 +35,29 @@ internal class ApplyFileDiffAction : DumbAwareAction() {
 }
 
 fun applyDiffs(tests: Array<out AbstractTestProxy>) {
-    val diffs = tests.flatMap { test ->
-        if (test.isLeaf) {
-            test.diffViewerProviders
-        } else {
-            test.collectChildrenRecursively(mutableListOf())
-        }
-    }.distinct()
+    val diffsByFile = tests
+        .flatMap { it.collectChildrenRecursively(mutableListOf()) }
+        .distinct()
+        .groupBy { it.filePath }
 
     WriteAction.run<Throwable> {
-        for (diff in diffs) {
-            val filePath = diff.filePath ?: continue
+        for ((filePath, diffs) in diffsByFile) {
+            if (filePath == null) continue
             val file = VfsUtil.findFile(Paths.get(filePath), true) ?: continue
-            file.writeText(diff.right)
+
+            val result =  if (diffs.size == 1) {
+                diffs.single().right
+            } else {
+                val first = diffs.first()
+                val base = first.left
+                diffs
+                    .windowed(2)
+                    .fold(first.right) { acc, (_, right) ->
+                        autoMerge(left = acc, base = base, right = right.right)
+                    }
+            }
+
+            file.writeText(result)
         }
     }
 }
@@ -57,4 +71,66 @@ private fun AbstractTestProxy.collectChildrenRecursively(list: MutableList<DiffH
         }
     }
     return list
+}
+
+private fun autoMerge(left: String, base: String, right: String): String {
+    val leftLines = left.lines()
+    val baseLines = base.lines()
+    val rightLines = right.lines()
+
+    val fragments = ComparisonManager.getInstance().mergeLines(
+        left,
+        base,
+        right,
+        ComparisonPolicy.DEFAULT,
+        EmptyProgressIndicator()
+    )
+
+    val result = mutableListOf<String>()
+    var currentBaseLine = 0
+
+    for (fragment in fragments) {
+        val baseStart = fragment.getStartLine(ThreeSide.BASE)
+        val baseEnd = fragment.getEndLine(ThreeSide.BASE)
+        val leftStart = fragment.getStartLine(ThreeSide.LEFT)
+        val leftEnd = fragment.getEndLine(ThreeSide.LEFT)
+        val rightStart = fragment.getStartLine(ThreeSide.RIGHT)
+        val rightEnd = fragment.getEndLine(ThreeSide.RIGHT)
+
+        // Copy unchanged lines from base
+        while (currentBaseLine < baseStart) {
+            result += baseLines[currentBaseLine]
+            currentBaseLine++
+        }
+
+        // Extract chunks
+        val leftChunk = leftLines.subList(leftStart, leftEnd)
+        val rightChunk = rightLines.subList(rightStart, rightEnd)
+        val baseChunk = baseLines.subList(baseStart, baseEnd)
+
+        // Auto-resolve
+        when {
+            leftChunk == rightChunk -> result += leftChunk
+            leftChunk == baseChunk -> result += rightChunk
+            rightChunk == baseChunk -> result += leftChunk
+            else -> {
+                // Conflict
+                result += "<<<<<<< LEFT"
+                result += leftChunk
+                result += "======="
+                result += rightChunk
+                result += ">>>>>>> RIGHT"
+            }
+        }
+
+        currentBaseLine = baseEnd
+    }
+
+    // Add remaining lines from base
+    while (currentBaseLine < baseLines.size) {
+        result += baseLines[currentBaseLine]
+        currentBaseLine++
+    }
+
+    return result.joinToString("\n")
 }
